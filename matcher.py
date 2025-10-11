@@ -55,17 +55,18 @@ def hungarian_match(cost: torch.Tensor, valid_gt_mask: torch.Tensor) -> List[Tup
             continue
         cost_slice = cost[b][:, cols]
         remaining_rows = torch.arange(K, device=cost.device).tolist()
-        remaining_cols = cols.tolist()
+        remaining_col_positions = list(range(cols.numel()))
+        remaining_col_ids = cols.tolist()
         row_match: List[int] = []
         col_values: List[int] = []
-        while remaining_rows and remaining_cols:
+        while remaining_rows and remaining_col_positions:
             min_val = None
             sel_row = None
             sel_idx = None
             for r in remaining_rows:
                 row_vals = cost_slice[r]
-                for c_idx, col_val in enumerate(remaining_cols):
-                    val = row_vals[c_idx].item()
+                for c_idx, col_pos in enumerate(remaining_col_positions):
+                    val = row_vals[col_pos].item()
                     if min_val is None or val < min_val:
                         min_val = val
                         sel_row = r
@@ -73,9 +74,10 @@ def hungarian_match(cost: torch.Tensor, valid_gt_mask: torch.Tensor) -> List[Tup
             if sel_row is None or sel_idx is None:
                 break
             row_match.append(sel_row)
-            col_values.append(remaining_cols[sel_idx])
+            col_values.append(remaining_col_ids[sel_idx])
             remaining_rows.remove(sel_row)
-            remaining_cols.pop(sel_idx)
+            remaining_col_positions.pop(sel_idx)
+            remaining_col_ids.pop(sel_idx)
         rows_tensor = torch.tensor(row_match, dtype=torch.long, device=cost.device)
         cols_tensor = cols.new_tensor(col_values, dtype=torch.long) if col_values else torch.empty(0, dtype=torch.long, device=cost.device)
         matches.append((rows_tensor, cols_tensor))
