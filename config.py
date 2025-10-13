@@ -6,7 +6,7 @@ from typing import Tuple
 class Config:
     """Global configuration for model, training, and export."""
 
-    img_size: Tuple[int, int] = (512, 512)
+    img_size: Tuple[int, int] = (1024, 1024)
     in_channels: int = 1
     aux_mask_channels: int = 4
     num_queries: int = 4

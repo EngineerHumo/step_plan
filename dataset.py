@@ -182,10 +182,10 @@ def build_synthetic_items(root: Path, num_samples: int, cfg: Config) -> List[Dic
         item_dir.mkdir(parents=True, exist_ok=True)
         image_path = item_dir / "image.png"
         if cfg.in_channels == 1:
-            norm = (image[0] - image[0].min()) / (image[0].ptp() + 1e-6)
+            norm = (image[0] - image[0].min()) / (np.ptp(image[0]) + 1e-6)
             cv2.imwrite(str(image_path), (norm * 255).astype(np.uint8))
         else:
-            norm = (image.transpose(1, 2, 0) - image.min()) / (image.ptp() + 1e-6)
+            norm = (image.transpose(1, 2, 0) - image.min()) / ( np.ptp(image) + 1e-6)
             cv2.imwrite(str(image_path), (norm * 255).astype(np.uint8))
         aux_paths: List[str] = []
         for ch in range(cfg.aux_mask_channels):
