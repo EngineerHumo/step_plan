@@ -16,13 +16,7 @@ def dice_cost(pred_logits: torch.Tensor, gt_masks: torch.Tensor, roi: torch.Tens
     pred = pred_logits.sigmoid().view(B, K, -1)
     gt = gt_masks.view(B, Kgt, -1).clamp(0, 1)
     if roi is not None:
-        if roi.dim() == 3:
-            roi = roi.unsqueeze(1)
-        if roi.shape[1] != 1:
-            roi = roi[:, :1]
-        if roi.shape[-2:] != (H, W):
-            roi = F.interpolate(roi, size=(H, W), mode="nearest")
-        roi_flat = roi.to(dtype=pred.dtype).flatten(2)
+        roi_flat = roi.view(B, 1, -1)
         pred = pred * roi_flat
         gt = gt * roi_flat
     inter = torch.einsum("bki,bgi->bkg", pred, gt)
@@ -38,13 +32,7 @@ def bce_cost(pred_logits: torch.Tensor, gt_masks: torch.Tensor, roi: torch.Tenso
     pred = pred_logits.sigmoid().view(B, K, -1)
     gt = gt_masks.view(B, Kgt, -1).clamp(0, 1)
     if roi is not None:
-        if roi.dim() == 3:
-            roi = roi.unsqueeze(1)
-        if roi.shape[1] != 1:
-            roi = roi[:, :1]
-        if roi.shape[-2:] != (H, W):
-            roi = F.interpolate(roi, size=(H, W), mode="nearest")
-        roi_flat = roi.to(dtype=pred.dtype).flatten(2)
+        roi_flat = roi.view(B, 1, -1)
         pred = pred * roi_flat
         gt = gt * roi_flat
         normalizer = roi_flat.sum(-1, keepdim=True).clamp_min(1.0)
