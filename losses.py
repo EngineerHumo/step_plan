@@ -32,7 +32,7 @@ def overlap_penalty(pred_prob: torch.Tensor, roi: torch.Tensor | None = None) ->
     if roi is not None:
         roi_flat = roi.view(B, 1, -1)
         flat = flat * roi_flat
-        normalizer = roi_flat.sum(-1).clamp_min(1.0)
+        normalizer = roi_flat.sum(-1).clamp_min(1.0).squeeze(-1)
     else:
         normalizer = torch.tensor(H * W, device=flat.device, dtype=flat.dtype)
     penalty = torch.zeros(B, device=flat.device, dtype=flat.dtype)
@@ -51,8 +51,12 @@ def tv_smoothness(pred_prob: torch.Tensor) -> torch.Tensor:
 
 
 def sobel_edges(x: torch.Tensor) -> torch.Tensor:
-    if x.dim() == 4:
+    if x.dim() == 2:
+        x = x.unsqueeze(0).unsqueeze(0)
+    elif x.dim() == 3:
         x = x.unsqueeze(1)
+    elif x.dim() != 4:
+        raise ValueError(f"Expected 2D, 3D, or 4D tensor, got shape {tuple(x.shape)}")
     kernel_x = torch.tensor([[1, 0, -1], [2, 0, -2], [1, 0, -1]], dtype=x.dtype, device=x.device).view(1, 1, 3, 3)
     kernel_y = torch.tensor([[1, 2, 1], [0, 0, 0], [-1, -2, -1]], dtype=x.dtype, device=x.device).view(1, 1, 3, 3)
     grad_x = F.conv2d(x, kernel_x, padding=1)
