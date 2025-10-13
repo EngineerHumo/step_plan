@@ -32,7 +32,7 @@ def overlap_penalty(pred_prob: torch.Tensor, roi: torch.Tensor | None = None) ->
     if roi is not None:
         roi_flat = roi.view(B, 1, -1)
         flat = flat * roi_flat
-        normalizer = roi_flat.sum(-1).clamp_min(1.0)
+        normalizer = roi_flat.sum(-1).clamp_min(1.0).squeeze(-1)
     else:
         normalizer = torch.tensor(H * W, device=flat.device, dtype=flat.dtype)
     penalty = torch.zeros(B, device=flat.device, dtype=flat.dtype)
