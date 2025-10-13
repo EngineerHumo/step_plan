@@ -184,7 +184,7 @@ class MaskDecoder(nn.Module):
         lowres_masks = torch.einsum("bke,behw->bkhw", kernels, pix_embed)
         mask_logits = F.interpolate(
             lowres_masks,
-            scale_factor=4.0,
+            size=self.cfg.img_size,
             mode="bilinear",
             align_corners=False,
         )
