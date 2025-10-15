@@ -196,6 +196,21 @@ def _select_device(preferred: str) -> str:
     return preferred
 
 
+def _get_roi_mask(aux: torch.Tensor, cfg: Config) -> torch.Tensor:
+    """Return a valid ROI mask, falling back to all-ones when empty."""
+
+    if aux.size(1) == 0:
+        shape = (aux.size(0), 1, aux.size(-2), aux.size(-1))
+        return torch.ones(shape, dtype=aux.dtype, device=aux.device)
+
+    roi = aux[:, cfg.roi_channel_index : cfg.roi_channel_index + 1].clone()
+    flat = (roi > 0.5).flatten(2).sum(-1)
+    empty = flat == 0
+    if empty.any():
+        roi[empty] = 1.0
+    return roi
+
+
 def train_one_epoch(
     model: FullModel,
     loader: DataLoader,
@@ -212,7 +227,7 @@ def train_one_epoch(
         gt_valid = batch["gt_valid"].to(cfg.device)
         K_gt = batch["K_gt"].to(cfg.device)
 
-        roi = aux[:, cfg.roi_channel_index : cfg.roi_channel_index + 1]
+        roi = _get_roi_mask(aux, cfg)
         forbidden = aux[:, 1:3].sum(1, keepdim=True).clamp(max=1.0)
 
         mask_logits, exist_logits, _ = model(image, aux)
@@ -283,7 +298,7 @@ def evaluate(model: FullModel, loader: DataLoader, cfg: Config) -> Dict[str, flo
         gt_masks = batch["gt_masks"].to(cfg.device)
         gt_valid = batch["gt_valid"].to(cfg.device)
 
-        roi = aux[:, cfg.roi_channel_index : cfg.roi_channel_index + 1]
+        roi = _get_roi_mask(aux, cfg)
         mask_logits, exist_logits, _ = model(image, aux)
         pred_prob = mask_logits.sigmoid()
         cost = dice_cost(mask_logits, gt_masks, roi=roi)
