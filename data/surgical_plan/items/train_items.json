@@ -1,0 +1,668 @@
+[
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0001/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0002/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0003/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0004/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0004/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0004/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0004/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0004/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0004/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0006/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0007/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0008/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0009/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0010/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0011/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0012/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0013/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0013/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0013/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0013/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0013/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0013/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0014/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0016/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0016/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0016/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0016/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0016/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0016/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0017/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0017/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0017/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0017/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0017/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0017/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0018/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0019/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0020/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0021/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0022/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0022/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0022/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0022/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0022/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0022/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0023/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0024/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0024/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0024/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0024/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0024/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0024/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0026/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0027/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0028/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0029/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0030/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0031/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0032/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0033/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0034/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0036/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0037/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0038/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0039/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0040/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0041/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0042/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0043/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0044/gt_1.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0046/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0047/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0047/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0047/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0047/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0047/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0047/gt_0.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0048/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0049/gt_2.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0050/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0051/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0052/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/gt_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/gt_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/gt_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0053/gt_3.png"
+    ]
+  },
+  {
+    "image": "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0054/image.png",
+    "aux_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0054/aux_0.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0054/aux_1.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0054/aux_2.png",
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0054/aux_3.png"
+    ],
+    "gt_masks": [
+      "/home/wensheng/jiaqi/step_plan/data/surgical_plan/train/case_0054/gt_0.png"
+    ]
+  }
+]

@@ -95,7 +95,53 @@ class VisdomLogger:
         opts = {"title": f"{title} (step {self.global_step})"}
         win = self._wins.get(key)
         self._wins[key] = self.vis.image(img, win=win, opts=opts)
+    
 
+    def log_batch(
+        self,
+        images: torch.Tensor,
+        gt_masks: torch.Tensor,
+        pred_prob: torch.Tensor,
+    ) -> None:
+        if not self.enabled or self.vis is None:
+            return
+        try:
+            # 显示输入图像
+            inputs_grid = self._to_grid(images, normalize=True)
+        
+            # 为每个通道创建单独的显示
+            B, C, H, W = gt_masks.shape
+        
+            # 显示每个通道的GT masks
+            for c in range(C):
+                gt_channel = gt_masks[:, c:c+1]  # [B, 1, H, W]
+                gt_grid = self._to_grid(gt_channel, normalize=True)
+                self._show(f"labels_channel_{c}", gt_grid, f"Train/Label_Channel_{c}")
+        
+            # 显示每个通道的预测概率
+            for c in range(C):
+                pred_channel = pred_prob[:, c:c+1]  # [B, 1, H, W]
+                pred_grid = self._to_grid(pred_channel, normalize=True)
+                self._show(f"outputs_channel_{c}", pred_grid, f"Train/Output_Channel_{c}")
+        
+            # 可选：显示合并视图（所有通道的最大值）
+            gt_combined = gt_masks.float().max(dim=1).values.unsqueeze(1)
+            gt_grid = self._to_grid(gt_combined, normalize=True)
+        
+            pred_combined = pred_prob.max(dim=1).values.unsqueeze(1)
+            pred_grid = self._to_grid(pred_combined, normalize=True)
+        
+            self._show("inputs", inputs_grid, "Train/Input")
+            self._show("labels_combined", gt_grid, "Train/Label_Combined")
+            self._show("outputs_combined", pred_grid, "Train/Output_Combined")
+        
+            self.global_step += 1
+        except Exception as exc:
+            print(f"[Visdom] Logging error: {exc}")
+            self.enabled = False
+            self.vis = None
+
+    '''
     def log_batch(
         self,
         images: torch.Tensor,
@@ -118,6 +164,7 @@ class VisdomLogger:
             print(f"[Visdom] Logging error: {exc}")
             self.enabled = False
             self.vis = None
+    '''
 
 
 class FullModel(nn.Module):
@@ -217,9 +264,11 @@ def train_one_epoch(
         loss.backward()
         optimizer.step()
         total_loss += float(loss.item())
-
+        print(gt_masks.max())
+        print(pred_prob.max())
         if vis_logger is not None:
             vis_logger.log_batch(image, gt_masks, pred_prob)
+            #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
     return total_loss / max(1, len(loader))
 
 
@@ -291,7 +340,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--img_size", type=int, nargs=2, default=None, help="Image size H W")
     parser.add_argument("--num_queries", type=int, default=None, help="Number of queries")
     parser.add_argument("--save_dir", type=str, default=None, help="Directory to save checkpoints")
-    parser.add_argument("--device", type=str, default=None, help="Device to use")
+    parser.add_argument("--device", type=str, default=1, help="Device to use")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--synthetic", action="store_true", help="Use synthetic random data for smoke testing")
     parser.add_argument("--synthetic_samples", type=int, default=32, help="Number of synthetic samples")
