@@ -9,10 +9,13 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid
 
 from config import Config
 from dataset import (
@@ -34,6 +37,87 @@ from losses import (
 from matcher import bce_cost, dice_cost, hungarian_match
 from model_parts import InputFusion, MaskDecoder, PixelDecoder, SegFormerBackbone
 from utils.seed import set_global_seed
+
+try:
+    from visdom import Visdom
+except Exception:  # pragma: no cover - optional dependency
+    Visdom = None
+
+
+class VisdomLogger:
+    """Utility for streaming training visuals to a Visdom dashboard."""
+
+    def __init__(self, cfg: Config) -> None:
+        self.cfg = cfg
+        self.enabled = cfg.visdom_enabled and Visdom is not None
+        self.vis: Visdom | None = None
+        self._wins: Dict[str, str] = {}
+        self.global_step = 0
+        if not self.enabled:
+            return
+        try:
+            self.vis = Visdom(server=cfg.visdom_server, port=cfg.visdom_port, env=cfg.visdom_env)
+            if not self.vis.check_connection():
+                print("[Visdom] Connection failed, disabling visualisation.")
+                self.vis = None
+                self.enabled = False
+        except Exception as exc:  # pragma: no cover - network dependent
+            print(f"[Visdom] Initialisation error: {exc}")
+            self.vis = None
+            self.enabled = False
+
+    def _to_grid(self, tensor: torch.Tensor, normalize: bool = True) -> np.ndarray | None:
+        if tensor.numel() == 0:
+            return None
+        data = tensor.detach().cpu().float()
+        if data.dim() == 3:
+            data = data.unsqueeze(1)
+        data = data[: self.cfg.visdom_max_samples]
+        if data.size(0) == 0:
+            return None
+        if normalize:
+            flat = data.view(data.size(0), -1)
+            min_vals = flat.min(dim=1, keepdim=True)[0].view(-1, 1, 1, 1)
+            max_vals = flat.max(dim=1, keepdim=True)[0].view(-1, 1, 1, 1)
+            data = (data - min_vals) / (max_vals - min_vals + 1e-6)
+        if data.size(1) == 1:
+            data = data.repeat(1, 3, 1, 1)
+        grid = make_grid(
+            data,
+            nrow=max(1, min(data.size(0), self.cfg.visdom_max_samples)),
+            padding=2,
+        )
+        return grid.cpu().numpy()
+
+    def _show(self, key: str, img: np.ndarray | None, title: str) -> None:
+        if not self.enabled or self.vis is None or img is None:
+            return
+        opts = {"title": f"{title} (step {self.global_step})"}
+        win = self._wins.get(key)
+        self._wins[key] = self.vis.image(img, win=win, opts=opts)
+
+    def log_batch(
+        self,
+        images: torch.Tensor,
+        gt_masks: torch.Tensor,
+        pred_prob: torch.Tensor,
+    ) -> None:
+        if not self.enabled or self.vis is None:
+            return
+        try:
+            inputs_grid = self._to_grid(images, normalize=True)
+            gt_combined = gt_masks.float().max(dim=1).values.unsqueeze(1)
+            gt_grid = self._to_grid(gt_combined, normalize=True)
+            pred_combined = pred_prob.max(dim=1).values.unsqueeze(1)
+            pred_grid = self._to_grid(pred_combined, normalize=True)
+            self._show("inputs", inputs_grid, "Train/Input")
+            self._show("labels", gt_grid, "Train/Label")
+            self._show("outputs", pred_grid, "Train/Output")
+            self.global_step += 1
+        except Exception as exc:  # pragma: no cover - visual only
+            print(f"[Visdom] Logging error: {exc}")
+            self.enabled = False
+            self.vis = None
 
 
 class FullModel(nn.Module):
@@ -65,7 +149,13 @@ def _select_device(preferred: str) -> str:
     return preferred
 
 
-def train_one_epoch(model: FullModel, loader: DataLoader, optimizer: optim.Optimizer, cfg: Config) -> float:
+def train_one_epoch(
+    model: FullModel,
+    loader: DataLoader,
+    optimizer: optim.Optimizer,
+    cfg: Config,
+    vis_logger: Optional[VisdomLogger] = None,
+) -> float:
     model.train()
     total_loss = 0.0
     for batch in loader:
@@ -127,6 +217,9 @@ def train_one_epoch(model: FullModel, loader: DataLoader, optimizer: optim.Optim
         loss.backward()
         optimizer.step()
         total_loss += float(loss.item())
+
+        if vis_logger is not None:
+            vis_logger.log_batch(image, gt_masks, pred_prob)
     return total_loss / max(1, len(loader))
 
 
@@ -203,6 +296,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--synthetic", action="store_true", help="Use synthetic random data for smoke testing")
     parser.add_argument("--synthetic_samples", type=int, default=32, help="Number of synthetic samples")
     parser.add_argument("--resume", type=str, default=None, help="Checkpoint path to resume from")
+    parser.add_argument("--visdom", action="store_true", help="Enable Visdom visualisation")
+    parser.add_argument("--visdom_env", type=str, default=None, help="Visdom environment name")
+    parser.add_argument("--visdom_server", type=str, default=None, help="Visdom server address")
+    parser.add_argument("--visdom_port", type=int, default=None, help="Visdom server port")
+    parser.add_argument(
+        "--visdom_max_samples",
+        type=int,
+        default=None,
+        help="Maximum number of samples to visualise per batch",
+    )
     return parser.parse_args()
 
 
@@ -223,6 +326,16 @@ def main() -> None:
         cfg.device = args.device
     if args.epochs is not None:
         cfg.max_epochs = int(args.epochs)
+    if args.visdom:
+        cfg.visdom_enabled = True
+    if args.visdom_env is not None:
+        cfg.visdom_env = args.visdom_env
+    if args.visdom_server is not None:
+        cfg.visdom_server = args.visdom_server
+    if args.visdom_port is not None:
+        cfg.visdom_port = int(args.visdom_port)
+    if args.visdom_max_samples is not None:
+        cfg.visdom_max_samples = max(1, int(args.visdom_max_samples))
     cfg.device = _select_device(cfg.device)
 
     set_global_seed(args.seed)
@@ -271,9 +384,11 @@ def main() -> None:
     save_dir = Path(cfg.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
+    vis_logger = VisdomLogger(cfg) if cfg.visdom_enabled else None
+
     for epoch in range(start_epoch, cfg.max_epochs):
         start_time = time.time()
-        train_loss = train_one_epoch(model, train_loader, optimizer, cfg)
+        train_loss = train_one_epoch(model, train_loader, optimizer, cfg, vis_logger=vis_logger)
         elapsed = time.time() - start_time
         metrics = {"dice": 0.0}
         if val_loader is not None:
