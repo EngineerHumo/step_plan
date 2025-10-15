@@ -221,7 +221,7 @@ class SurgicalPlanningDataset(Dataset):
             image, aux, gt = self._augment(image, aux, gt)
         image = self._standardize(image)
         roi = aux[self.cfg.roi_channel_index : self.cfg.roi_channel_index + 1]
-        if gt.shape[0] > 0:
+        if gt.shape[0] > 0 and np.any(roi > 0.5):
             gt = gt * roi
         return {
             "image": torch.from_numpy(image),
