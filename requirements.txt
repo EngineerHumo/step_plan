@@ -6,3 +6,4 @@ torchvision
 scipy
 onnx
 onnxruntime
+visdom
