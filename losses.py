@@ -92,6 +92,41 @@ def area_prior_loss(pred_prob: torch.Tensor, matched_gt: torch.Tensor, roi: torc
     return (pred_area - gt_area).abs().mean()
 
 
+def _pairwise_similarity(matrix: torch.Tensor) -> torch.Tensor:
+    matrix = F.normalize(matrix, dim=-1)
+    return torch.matmul(matrix, matrix.transpose(1, 2))
+
+
+def query_diversity_loss(pred_prob: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
+    B, K, H, W = pred_prob.shape
+    if K <= 1:
+        return pred_prob.new_tensor(0.0)
+
+    loss = pred_prob.new_tensor(0.0)
+    for b in range(B):
+        pred_flat = pred_prob[b]
+        if mask is not None:
+            pred_flat = pred_flat * mask[b]
+        pred_flat = pred_flat.view(K, -1)
+        similarity = _pairwise_similarity(pred_flat.unsqueeze(0))[0]
+        mask_matrix = 1 - torch.eye(K, device=pred_prob.device, dtype=pred_prob.dtype)
+        loss = loss + (similarity * mask_matrix).mean()
+
+    return loss / B
+
+
+def query_kernel_diversity_loss(kernels: torch.Tensor) -> torch.Tensor:
+    B, K, _ = kernels.shape
+    if K <= 1:
+        return kernels.new_tensor(0.0)
+
+    similarity = _pairwise_similarity(kernels)
+    eye = torch.eye(K, device=kernels.device, dtype=kernels.dtype).unsqueeze(0)
+    mask = 1 - eye
+    pairwise = (similarity * mask).sum(dim=(1, 2)) / (K * (K - 1))
+    return pairwise.mean()
+
+
 def existence_losses(exist_logits: torch.Tensor, match_rows: Sequence[torch.Tensor], K_gt: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     B, K = exist_logits.shape
     targets = torch.zeros_like(exist_logits, dtype=torch.float32)
@@ -114,5 +149,7 @@ __all__ = [
     "boundary_alignment_loss",
     "forbidden_overlap_loss",
     "area_prior_loss",
+    "query_diversity_loss",
+    "query_kernel_diversity_loss",
     "existence_losses",
 ]
