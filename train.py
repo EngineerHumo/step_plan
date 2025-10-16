@@ -34,6 +34,7 @@ from losses import (
     forbidden_overlap_loss,
     overlap_penalty,
     query_diversity_loss,
+    query_kernel_diversity_loss,
     tv_smoothness,
 )
 from matcher import bce_cost, dice_cost, hungarian_match
@@ -188,8 +189,8 @@ class FullModel(nn.Module):
         feats = self.backbone(fused)
         feats = [adapter(feat) for adapter, feat in zip(self.adapters, feats)]
         pix_embed = self.pixel_decoder(feats)
-        mask_logits, exist_logits, lowres = self.mask_decoder(pix_embed)
-        return mask_logits, exist_logits, {"pix": pix_embed, "lowres": lowres}
+        mask_logits, exist_logits, lowres, kernels = self.mask_decoder(pix_embed)
+        return mask_logits, exist_logits, {"pix": pix_embed, "lowres": lowres, "kernels": kernels}
 
 
 def _select_device(preferred: str) -> str:
@@ -266,7 +267,7 @@ def train_one_epoch(
         roi = _get_roi_mask(aux, cfg)
         forbidden = aux[:, 1:3].sum(1, keepdim=True).clamp(max=1.0)
 
-        mask_logits, exist_logits, _ = model(image, aux)
+        mask_logits, exist_logits, decoder_out = model(image, aux)
         pred_prob = mask_logits.sigmoid()
 
         cost = improved_cost_calculation(mask_logits, gt_masks, roi)
@@ -297,7 +298,8 @@ def train_one_epoch(
         area_pen = area_prior_loss(pred_prob, matched_gt, roi=roi)
         exist_ce, card = existence_losses(exist_logits, [m[0] for m in matches], K_gt)
 
-        diversity_loss = query_diversity_loss(pred_prob)
+        diversity_loss = query_diversity_loss(pred_prob, mask=roi)
+        kernel_div = query_kernel_diversity_loss(decoder_out["kernels"])
 
         loss = (
             cfg.w_dice * dice_term
@@ -310,6 +312,7 @@ def train_one_epoch(
             + cfg.w_exist_ce * exist_ce
             + cfg.w_cardinality * card
             + 0.1 * diversity_loss
+            + 0.05 * kernel_div
         )
 
         optimizer.zero_grad(set_to_none=True)
@@ -325,7 +328,9 @@ def train_one_epoch(
             else:
                 print(f"Batch {b}: No matches")
         pred_std = pred_prob.std(dim=1).mean()
+        kernel_std = decoder_out["kernels"].std(dim=1).mean()
         print(f"Prediction std across queries: {pred_std:.4f}")
+        print(f"Kernel std across queries: {kernel_std:.4f}")
         if vis_logger is not None:
             vis_logger.log_batch(image, gt_masks, pred_prob)
             #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
