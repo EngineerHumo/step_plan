@@ -290,6 +290,13 @@ def train_one_epoch(
         else:
             dice_term = torch.tensor(0.0, device=mask_logits.device)
             bce_term = torch.tensor(0.0, device=mask_logits.device)
+        unmatched_mask = ~matched_mask
+        if unmatched_mask.any():
+            unmatched_dice = dice_vals[unmatched_mask].mean()
+            unmatched_bce = bce_vals[unmatched_mask].mean()
+        else:
+            unmatched_dice = torch.tensor(0.0, device=mask_logits.device)
+            unmatched_bce = torch.tensor(0.0, device=mask_logits.device)
 
         overlap = overlap_penalty(pred_prob, roi=roi).mean()
         tv = tv_smoothness(pred_prob)
@@ -300,10 +307,15 @@ def train_one_epoch(
 
         diversity_loss = query_diversity_loss(pred_prob, mask=roi)
         kernel_div = query_kernel_diversity_loss(decoder_out["kernels"])
+        gt_union = matched_gt.sum(dim=1, keepdim=True).clamp(max=1.0)
+        roi_residual = (roi - gt_union).clamp(min=0.0)
+        roi_background_penalty = (pred_prob * roi_residual).mean()
 
         loss = (
             cfg.w_dice * dice_term
             + cfg.w_bce * bce_term
+            + cfg.w_unmatched_dice * unmatched_dice
+            + cfg.w_unmatched_bce * unmatched_bce
             + cfg.w_overlap * overlap
             + cfg.w_tv * tv
             + cfg.w_boundary * boundary
@@ -311,6 +323,7 @@ def train_one_epoch(
             + cfg.w_area * area_pen
             + cfg.w_exist_ce * exist_ce
             + cfg.w_cardinality * card
+            + cfg.w_roi_background * roi_background_penalty
             + 0.1 * diversity_loss
             + 0.05 * kernel_div
         )
@@ -331,6 +344,8 @@ def train_one_epoch(
         kernel_std = decoder_out["kernels"].std(dim=1).mean()
         print(f"Prediction std across queries: {pred_std:.4f}")
         print(f"Kernel std across queries: {kernel_std:.4f}")
+        exist_scores = torch.sigmoid(exist_logits).detach().cpu()
+        print(f"Existence scores per query: {exist_scores.tolist()}")
         if vis_logger is not None:
             vis_logger.log_batch(image, gt_masks, pred_prob)
             #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
