@@ -27,14 +27,14 @@ from dataset import (
 )
 from losses import (
     area_prior_loss,
-    bce_loss_logits,
+    asymmetric_bce_loss,
     boundary_alignment_loss,
     dice_loss,
     existence_losses,
-    forbidden_overlap_loss,
     overlap_penalty,
     query_diversity_loss,
     query_kernel_diversity_loss,
+    tversky_loss,
     tv_smoothness,
 )
 from matcher import bce_cost, dice_cost, hungarian_match
@@ -69,7 +69,7 @@ class VisdomLogger:
             self.vis = None
             self.enabled = False
 
-    def _to_grid(self, tensor: torch.Tensor, normalize: bool = True) -> np.ndarray | None:
+    def _to_grid(self, tensor: torch.Tensor, normalize: bool = True, nrow: int | None = None) -> np.ndarray | None:
         if tensor.numel() == 0:
             return None
         data = tensor.detach().cpu().float()
@@ -87,9 +87,34 @@ class VisdomLogger:
             data = data.repeat(1, 3, 1, 1)
         grid = make_grid(
             data,
-            nrow=max(1, min(data.size(0), self.cfg.visdom_max_samples)),
+            nrow=nrow or max(1, min(data.size(0), self.cfg.visdom_max_samples)),
             padding=2,
         )
+        return grid.cpu().numpy()
+
+    def _queries_to_grid(
+        self,
+        tensor: torch.Tensor,
+        roi: torch.Tensor | None = None,
+    ) -> np.ndarray | None:
+        if tensor.numel() == 0:
+            return None
+        data = tensor.detach().cpu().float()
+        B, K, H, W = data.shape
+        max_samples = min(B, self.cfg.visdom_max_samples)
+        if max_samples == 0:
+            return None
+        data = data[:max_samples]
+        if roi is not None:
+            roi = roi.detach().cpu().float()[:max_samples]
+            data = data * roi
+        data = data.view(max_samples * K, 1, H, W)
+        flat = data.view(data.size(0), -1)
+        min_vals = flat.min(dim=1, keepdim=True)[0].view(-1, 1, 1, 1)
+        max_vals = flat.max(dim=1, keepdim=True)[0].view(-1, 1, 1, 1)
+        data = (data - min_vals) / (max_vals - min_vals + 1e-6)
+        data = data.repeat(1, 3, 1, 1)
+        grid = make_grid(data, nrow=self.cfg.num_queries, padding=2)
         return grid.cpu().numpy()
 
     def _show(self, key: str, img: np.ndarray | None, title: str) -> None:
@@ -98,76 +123,55 @@ class VisdomLogger:
         opts = {"title": f"{title} (step {self.global_step})"}
         win = self._wins.get(key)
         self._wins[key] = self.vis.image(img, win=win, opts=opts)
-    
 
+    def log_losses(self, losses: Dict[str, float]) -> None:
+        if not self.enabled or self.vis is None:
+            return
+        total = losses.get("total")
+        if total is None:
+            return
+        x = np.array([self.global_step], dtype=np.float32)
+        y = np.array([total], dtype=np.float32)
+        win = self._wins.get("total_loss")
+        update = None if win is None else "append"
+        self._wins["total_loss"] = self.vis.line(
+            X=x,
+            Y=y,
+            win=win,
+            update=update,
+            opts={"title": "Train/Total Loss", "xlabel": "step", "ylabel": "loss"},
+        )
+
+    
     def log_batch(
         self,
         images: torch.Tensor,
         gt_masks: torch.Tensor,
         pred_prob: torch.Tensor,
+        roi: torch.Tensor,
     ) -> None:
         if not self.enabled or self.vis is None:
             return
         try:
-            # 显示输入图像
             inputs_grid = self._to_grid(images, normalize=True)
-        
-            # 为每个通道创建单独的显示
-            B, C, H, W = gt_masks.shape
-        
-            # 显示每个通道的GT masks
-            for c in range(C):
-                gt_channel = gt_masks[:, c:c+1]  # [B, 1, H, W]
-                gt_grid = self._to_grid(gt_channel, normalize=True)
-                self._show(f"labels_channel_{c}", gt_grid, f"Train/Label_Channel_{c}")
-        
-            # 显示每个通道的预测概率
-            for c in range(C):
-                pred_channel = pred_prob[:, c:c+1]  # [B, 1, H, W]
-                pred_grid = self._to_grid(pred_channel, normalize=True)
-                self._show(f"outputs_channel_{c}", pred_grid, f"Train/Output_Channel_{c}")
-        
-            # 可选：显示合并视图（所有通道的最大值）
-            gt_combined = gt_masks.float().max(dim=1).values.unsqueeze(1)
-            gt_grid = self._to_grid(gt_combined, normalize=True)
-        
-            pred_combined = pred_prob.max(dim=1).values.unsqueeze(1)
-            pred_grid = self._to_grid(pred_combined, normalize=True)
-        
+            gt_grid = self._queries_to_grid(gt_masks.float(), roi=roi)
+            pred_grid = self._queries_to_grid(pred_prob, roi=roi)
+            combined_gt = gt_masks.float().max(dim=1, keepdim=True).values
+            combined_pred = pred_prob.max(dim=1, keepdim=True).values
+            gt_combined_grid = self._to_grid(combined_gt, normalize=True)
+            pred_combined_grid = self._to_grid(combined_pred, normalize=True)
+
             self._show("inputs", inputs_grid, "Train/Input")
-            self._show("labels_combined", gt_grid, "Train/Label_Combined")
-            self._show("outputs_combined", pred_grid, "Train/Output_Combined")
-        
+            self._show("labels_queries", gt_grid, "Train/GT_Queries (4x6)")
+            self._show("outputs_queries", pred_grid, "Train/Pred_Queries (4x6)")
+            self._show("labels_combined", gt_combined_grid, "Train/Label_Combined")
+            self._show("outputs_combined", pred_combined_grid, "Train/Output_Combined")
+
             self.global_step += 1
         except Exception as exc:
             print(f"[Visdom] Logging error: {exc}")
             self.enabled = False
             self.vis = None
-
-    '''
-    def log_batch(
-        self,
-        images: torch.Tensor,
-        gt_masks: torch.Tensor,
-        pred_prob: torch.Tensor,
-    ) -> None:
-        if not self.enabled or self.vis is None:
-            return
-        try:
-            inputs_grid = self._to_grid(images, normalize=True)
-            gt_combined = gt_masks.float().max(dim=1).values.unsqueeze(1)
-            gt_grid = self._to_grid(gt_combined, normalize=True)
-            pred_combined = pred_prob.max(dim=1).values.unsqueeze(1)
-            pred_grid = self._to_grid(pred_combined, normalize=True)
-            self._show("inputs", inputs_grid, "Train/Input")
-            self._show("labels", gt_grid, "Train/Label")
-            self._show("outputs", pred_grid, "Train/Output")
-            self.global_step += 1
-        except Exception as exc:  # pragma: no cover - visual only
-            print(f"[Visdom] Logging error: {exc}")
-            self.enabled = False
-            self.vis = None
-    '''
 
 
 class FullModel(nn.Module):
@@ -204,9 +208,9 @@ def _get_roi_mask(aux: torch.Tensor, cfg: Config) -> torch.Tensor:
     #print(cfg.roi_channel_index)
     if aux.size(1) == 0:
         shape = (aux.size(0), 1, aux.size(-2), aux.size(-1))
-        return torch.ones(shape, dtype=aux.dtype, device=aux.device)
+        return torch.ones(shape, dtype=torch.float32, device=aux.device)
 
-    roi = aux[:, cfg.roi_channel_index : cfg.roi_channel_index + 1].clone()
+    roi = aux[:, cfg.roi_channel_index : cfg.roi_channel_index + 1].clone().float()
     flat = (roi > 0.5).flatten(2).sum(-1)
     #print(roi.max())
     #print(roi.shape)
@@ -264,12 +268,10 @@ def train_one_epoch(
         gt_valid = batch["gt_valid"].to(cfg.device)
         K_gt = batch["K_gt"].to(cfg.device)
 
-        roi = _get_roi_mask(aux, cfg)
-        forbidden = aux[:, 0:3].sum(1, keepdim=True).clamp(max=1.0)
-
+        roi = _get_roi_mask(aux, cfg).to(image.dtype)
 
         mask_logits, exist_logits, decoder_out = model(image, aux)
-        pred_prob = mask_logits.sigmoid()
+        pred_prob = mask_logits.sigmoid() * roi
 
         cost = improved_cost_calculation(mask_logits, gt_masks, roi)
         matches = hungarian_match(cost, gt_valid)
@@ -283,45 +285,140 @@ def train_one_epoch(
             matched_gt[b, rows] = gt_masks[b, cols]
             matched_mask[b, rows] = True
 
-        dice_vals = dice_loss(pred_prob, matched_gt, mask=roi)
-        bce_vals = bce_loss_logits(mask_logits, matched_gt, mask=roi)
+        matched_gt = matched_gt * roi
+
+        matched_dice_vals = tversky_loss(pred_prob, matched_gt, mask=roi, alpha=0.7, beta=0.3)
+        matched_bce_vals = asymmetric_bce_loss(
+            mask_logits,
+            matched_gt,
+            mask=roi,
+            pos_weight=1.0,
+            neg_weight=1.5,
+        )
         if matched_mask.any():
-            dice_term = dice_vals[matched_mask].mean()
-            bce_term = bce_vals[matched_mask].mean()
+            matched_dice_raw = matched_dice_vals[matched_mask].mean()
+            matched_bce_raw = matched_bce_vals[matched_mask].mean()
         else:
-            dice_term = torch.tensor(0.0, device=mask_logits.device)
-            bce_term = torch.tensor(0.0, device=mask_logits.device)
+            matched_dice_raw = mask_logits.new_tensor(0.0)
+            matched_bce_raw = mask_logits.new_tensor(0.0)
 
-        overlap = overlap_penalty(pred_prob, roi=roi).mean()
-        tv = tv_smoothness(pred_prob)
-        boundary = boundary_alignment_loss(mask_logits.detach(), image)
-        forbid_pen = forbidden_overlap_loss(pred_prob, forbidden)
-        area_pen = area_prior_loss(pred_prob, matched_gt, roi=roi)
-        exist_ce, card = existence_losses(exist_logits, [m[0] for m in matches], K_gt)
+        overlap_raw = overlap_penalty(pred_prob, roi=roi).mean()
+        overlap_weight = cfg.w_overlap * 1.3
+        overlap_weighted = overlap_weight * overlap_raw
+        tv_raw = tv_smoothness(pred_prob)
+        tv_weighted = cfg.w_tv * tv_raw
+        boundary_raw = boundary_alignment_loss(mask_logits.detach(), image)
+        boundary_weighted = cfg.w_boundary * boundary_raw
+        area_raw = area_prior_loss(pred_prob, matched_gt, roi=roi)
+        area_weighted = cfg.w_area * area_raw
+        exist_ce_raw, card_raw = existence_losses(exist_logits, [m[0] for m in matches], K_gt)
+        exist_weighted = cfg.w_exist_ce * exist_ce_raw
+        card_weighted = cfg.w_cardinality * card_raw
 
-        diversity_loss = query_diversity_loss(pred_prob, mask=roi)
-        kernel_div = query_kernel_diversity_loss(decoder_out["kernels"])
+        diversity_raw = query_diversity_loss(pred_prob, mask=roi)
+        diversity_weighted = 0.1 * diversity_raw
+        kernel_div_raw = query_kernel_diversity_loss(decoder_out["kernels"])
+        kernel_div_weighted = 0.05 * kernel_div_raw
+
+        unmatched_mask = ~matched_mask
+        unmatched_dice_raw_list: List[torch.Tensor] = []
+        unmatched_bce_raw_list: List[torch.Tensor] = []
+        unmatched_overlap_raw_list: List[torch.Tensor] = []
+        roi_area = roi.view(B, -1).sum(dim=1).clamp_min(1.0)
+        for b in range(B):
+            unmatched_indices = torch.nonzero(unmatched_mask[b], as_tuple=False).squeeze(1)
+            if unmatched_indices.numel() == 0:
+                continue
+            valid_cols = torch.nonzero(gt_valid[b], as_tuple=False).squeeze(1)
+            matched_indices = torch.nonzero(matched_mask[b], as_tuple=False).squeeze(1)
+            for idx in unmatched_indices:
+                exist_prob = torch.sigmoid(exist_logits[b, idx])
+                roi_slice = roi[b : b + 1]
+                if valid_cols.numel() > 0:
+                    costs = cost[b, idx, valid_cols]
+                    if costs.numel() > 0:
+                        best_col = valid_cols[costs.argmin()]
+                        pred_slice = pred_prob[b : b + 1, idx : idx + 1]
+                        logit_slice = mask_logits[b : b + 1, idx : idx + 1]
+                        gt_slice = gt_masks[b : b + 1, best_col : best_col + 1] * roi_slice
+                        dice_val = tversky_loss(pred_slice, gt_slice, mask=roi_slice, alpha=0.7, beta=0.3).mean()
+                        bce_val = asymmetric_bce_loss(
+                            logit_slice,
+                            gt_slice,
+                            mask=roi_slice,
+                            pos_weight=1.0,
+                            neg_weight=1.5,
+                        ).mean()
+                        unmatched_dice_raw_list.append(exist_prob * dice_val)
+                        unmatched_bce_raw_list.append(exist_prob * bce_val)
+                if matched_indices.numel() > 0:
+                    matched_probs = pred_prob[b, matched_indices]
+                    overlap_vals = (
+                        pred_prob[b, idx : idx + 1] * matched_probs
+                    ).view(matched_probs.size(0), -1).sum(dim=1)
+                    overlap_mean = overlap_vals.mean() / roi_area[b]
+                    unmatched_overlap_raw_list.append(exist_prob * overlap_mean)
+
+        if unmatched_dice_raw_list:
+            unmatched_dice_raw = torch.stack(unmatched_dice_raw_list).mean()
+        else:
+            unmatched_dice_raw = mask_logits.new_tensor(0.0)
+        unmatched_dice_weighted = cfg.w_unmatched_dice * unmatched_dice_raw
+
+        if unmatched_bce_raw_list:
+            unmatched_bce_raw = torch.stack(unmatched_bce_raw_list).mean()
+        else:
+            unmatched_bce_raw = mask_logits.new_tensor(0.0)
+        unmatched_bce_weighted = cfg.w_unmatched_bce * unmatched_bce_raw
+
+        if unmatched_overlap_raw_list:
+            unmatched_overlap_raw = torch.stack(unmatched_overlap_raw_list).mean()
+        else:
+            unmatched_overlap_raw = mask_logits.new_tensor(0.0)
+        unmatched_overlap_weighted = cfg.w_overlap * unmatched_overlap_raw
+
+        matched_dice_weighted = cfg.w_dice * matched_dice_raw
+        matched_bce_weighted = cfg.w_bce * matched_bce_raw
 
         loss = (
-            cfg.w_dice * dice_term
-            + cfg.w_bce * bce_term
-            + cfg.w_overlap * overlap
-            + cfg.w_tv * tv
-            + cfg.w_boundary * boundary
-            + cfg.w_forbidden * forbid_pen
-            + cfg.w_area * area_pen
-            + cfg.w_exist_ce * exist_ce
-            + cfg.w_cardinality * card
-            + 0.1 * diversity_loss
-            + 0.05 * kernel_div
+            matched_dice_weighted
+            + matched_bce_weighted
+            + overlap_weighted
+            + tv_weighted
+            + boundary_weighted
+            + area_weighted
+            + exist_weighted
+            + card_weighted
+            + unmatched_dice_weighted
+            + unmatched_bce_weighted
+            + unmatched_overlap_weighted
+            + diversity_weighted
+            + kernel_div_weighted
         )
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
         total_loss += float(loss.item())
-        print(gt_masks.max())
-        print(pred_prob.max())
+        loss_report = [
+            f"matched_dice: raw={matched_dice_raw.item():.4f}, weighted={matched_dice_weighted.item():.4f}",
+            f"matched_bce: raw={matched_bce_raw.item():.4f}, weighted={matched_bce_weighted.item():.4f}",
+            f"unmatched_dice: raw={unmatched_dice_raw.item():.4f}, weighted={unmatched_dice_weighted.item():.4f}",
+            f"unmatched_bce: raw={unmatched_bce_raw.item():.4f}, weighted={unmatched_bce_weighted.item():.4f}",
+            f"unmatched_overlap: raw={unmatched_overlap_raw.item():.4f}, weighted={unmatched_overlap_weighted.item():.4f}",
+            f"overlap_penalty: raw={overlap_raw.item():.4f}, weighted={overlap_weighted.item():.4f}",
+            f"tv: raw={tv_raw.item():.4f}, weighted={tv_weighted.item():.4f}",
+            f"boundary: raw={boundary_raw.item():.4f}, weighted={boundary_weighted.item():.4f}",
+            f"area: raw={area_raw.item():.4f}, weighted={area_weighted.item():.4f}",
+            f"exist_ce: raw={exist_ce_raw.item():.4f}, weighted={exist_weighted.item():.4f}",
+            f"cardinality: raw={card_raw.item():.4f}, weighted={card_weighted.item():.4f}",
+            f"query_diversity: raw={diversity_raw.item():.4f}, weighted={diversity_weighted.item():.4f}",
+            f"kernel_diversity: raw={kernel_div_raw.item():.4f}, weighted={kernel_div_weighted.item():.4f}",
+        ]
+        print("Loss breakdown:")
+        for entry in loss_report:
+            print("  " + entry)
+        print(f"  total: {loss.item():.4f}")
         print(f"Cost matrix range: [{cost.min():.3f}, {cost.max():.3f}]")
         for b, (rows, cols) in enumerate(matches):
             if rows.numel() > 0:
@@ -333,7 +430,37 @@ def train_one_epoch(
         print(f"Prediction std across queries: {pred_std:.4f}")
         print(f"Kernel std across queries: {kernel_std:.4f}")
         if vis_logger is not None:
-            vis_logger.log_batch(image, gt_masks, pred_prob)
+            loss_dict = {
+                "total": float(loss.item()),
+                "matched_dice_raw": float(matched_dice_raw.item()),
+                "matched_dice_weighted": float(matched_dice_weighted.item()),
+                "matched_bce_raw": float(matched_bce_raw.item()),
+                "matched_bce_weighted": float(matched_bce_weighted.item()),
+                "unmatched_dice_raw": float(unmatched_dice_raw.item()),
+                "unmatched_dice_weighted": float(unmatched_dice_weighted.item()),
+                "unmatched_bce_raw": float(unmatched_bce_raw.item()),
+                "unmatched_bce_weighted": float(unmatched_bce_weighted.item()),
+                "unmatched_overlap_raw": float(unmatched_overlap_raw.item()),
+                "unmatched_overlap_weighted": float(unmatched_overlap_weighted.item()),
+                "overlap_raw": float(overlap_raw.item()),
+                "overlap_weighted": float(overlap_weighted.item()),
+                "tv_raw": float(tv_raw.item()),
+                "tv_weighted": float(tv_weighted.item()),
+                "boundary_raw": float(boundary_raw.item()),
+                "boundary_weighted": float(boundary_weighted.item()),
+                "area_raw": float(area_raw.item()),
+                "area_weighted": float(area_weighted.item()),
+                "exist_ce_raw": float(exist_ce_raw.item()),
+                "exist_ce_weighted": float(exist_weighted.item()),
+                "card_raw": float(card_raw.item()),
+                "card_weighted": float(card_weighted.item()),
+                "diversity_raw": float(diversity_raw.item()),
+                "diversity_weighted": float(diversity_weighted.item()),
+                "kernel_div_raw": float(kernel_div_raw.item()),
+                "kernel_div_weighted": float(kernel_div_weighted.item()),
+            }
+            vis_logger.log_losses(loss_dict)
+            vis_logger.log_batch(image, gt_masks, pred_prob, roi)
             #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
     return total_loss / max(1, len(loader))
 
@@ -351,7 +478,7 @@ def evaluate(model: FullModel, loader: DataLoader, cfg: Config) -> Dict[str, flo
 
         roi = _get_roi_mask(aux, cfg)
         mask_logits, exist_logits, _ = model(image, aux)
-        pred_prob = mask_logits.sigmoid()
+        pred_prob = mask_logits.sigmoid() * roi
         cost = dice_cost(mask_logits, gt_masks, roi=roi)
         matches = hungarian_match(cost, gt_valid)
 
@@ -363,6 +490,7 @@ def evaluate(model: FullModel, loader: DataLoader, cfg: Config) -> Dict[str, flo
             matched_gt[b, rows] = gt_masks[b, cols]
             matched_mask[b, rows] = True
 
+        matched_gt = matched_gt * roi
         dice_vals = 1.0 - dice_loss(pred_prob, matched_gt, mask=roi)
         if matched_mask.any():
             total_dice += float(dice_vals[matched_mask].mean().item())
