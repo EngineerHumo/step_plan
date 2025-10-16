@@ -34,7 +34,6 @@ from losses import (
     forbidden_overlap_loss,
     overlap_penalty,
     query_diversity_loss,
-    query_kernel_diversity_loss,
     tv_smoothness,
 )
 from matcher import bce_cost, dice_cost, hungarian_match
@@ -298,8 +297,7 @@ def train_one_epoch(
         area_pen = area_prior_loss(pred_prob, matched_gt, roi=roi)
         exist_ce, card = existence_losses(exist_logits, [m[0] for m in matches], K_gt)
 
-        diversity_loss = query_diversity_loss(pred_prob, mask=roi)
-        kernel_div = query_kernel_diversity_loss(decoder_out["kernels"])
+        diversity_loss = query_diversity_loss(pred_prob)
 
         loss = (
             cfg.w_dice * dice_term
@@ -312,7 +310,6 @@ def train_one_epoch(
             + cfg.w_exist_ce * exist_ce
             + cfg.w_cardinality * card
             + 0.1 * diversity_loss
-            + 0.05 * kernel_div
         )
 
         optimizer.zero_grad(set_to_none=True)
@@ -327,10 +324,9 @@ def train_one_epoch(
                 print(f"Batch {b}: {len(rows)} matches - queries {rows.tolist()} -> targets {cols.tolist()}")
             else:
                 print(f"Batch {b}: No matches")
+        # 查询轴上的标准差越大，说明不同查询的空间响应越分散；若为0则所有查询输出完全一致
         pred_std = pred_prob.std(dim=1).mean()
-        kernel_std = decoder_out["kernels"].std(dim=1).mean()
         print(f"Prediction std across queries: {pred_std:.4f}")
-        print(f"Kernel std across queries: {kernel_std:.4f}")
         if vis_logger is not None:
             vis_logger.log_batch(image, gt_masks, pred_prob)
             #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
