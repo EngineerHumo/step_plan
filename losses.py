@@ -26,6 +26,51 @@ def bce_loss_logits(logits: torch.Tensor, target: torch.Tensor, mask: torch.Tens
     return loss.mean(dim=(2, 3))
 
 
+def tversky_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    mask: torch.Tensor | None = None,
+    alpha: float = 0.7,
+    beta: float = 0.3,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    """Asymmetric Dice-style loss that penalises false positives/negatives differently."""
+
+    if mask is not None:
+        pred = pred * mask
+        target = target * mask
+    inter = (pred * target).sum(dim=(2, 3))
+    fp = (pred * (1.0 - target)).sum(dim=(2, 3))
+    fn = ((1.0 - pred) * target).sum(dim=(2, 3))
+    denom = inter + alpha * fp + beta * fn + eps
+    return 1.0 - (inter + eps) / denom
+
+
+def asymmetric_bce_loss(
+    logits: torch.Tensor,
+    target: torch.Tensor,
+    mask: torch.Tensor | None = None,
+    pos_weight: float = 1.0,
+    neg_weight: float = 1.0,
+) -> torch.Tensor:
+    """Binary cross-entropy with independent weights for positives and negatives."""
+
+    pos_loss = F.binary_cross_entropy_with_logits(
+        logits,
+        torch.ones_like(logits),
+        reduction="none",
+    )
+    neg_loss = F.binary_cross_entropy_with_logits(
+        logits,
+        torch.zeros_like(logits),
+        reduction="none",
+    )
+    loss = pos_weight * target * pos_loss + neg_weight * (1.0 - target) * neg_loss
+    if mask is not None:
+        loss = loss * mask
+    return loss.mean(dim=(2, 3))
+
+
 def overlap_penalty(pred_prob: torch.Tensor, roi: torch.Tensor | None = None) -> torch.Tensor:
     B, K, H, W = pred_prob.shape
     flat = pred_prob.view(B, K, -1)
@@ -143,6 +188,8 @@ def existence_losses(exist_logits: torch.Tensor, match_rows: Sequence[torch.Tens
 __all__ = [
     "dice_loss",
     "bce_loss_logits",
+    "tversky_loss",
+    "asymmetric_bce_loss",
     "overlap_penalty",
     "tv_smoothness",
     "sobel_edges",
