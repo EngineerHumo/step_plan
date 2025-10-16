@@ -9,7 +9,7 @@ class Config:
     img_size: Tuple[int, int] = (1024, 1024)
     in_channels: int = 3
     aux_mask_channels: int = 4
-    num_queries: int = 4
+    num_queries: int = 6
     embed_dim: int = 256
     mask_embed_dim: int = 128
     mha_heads: int = 8
