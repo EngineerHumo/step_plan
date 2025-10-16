@@ -33,31 +33,38 @@ class SurgicalPlanningDataset(Dataset):
         if path.suffix.lower() == ".npy":
             data = np.load(path).astype(np.float32)
             if data.ndim == 2:
-                data = data[None]
-            elif data.ndim == 3 and data.shape[0] not in (1, 3):
-                data = data.transpose(2, 0, 1)
+                data = np.repeat(data[None], 3, axis=0)
+            elif data.ndim == 3:
+                if data.shape[0] in (1, 3):
+                    if data.shape[0] == 1:
+                        data = np.repeat(data, 3, axis=0)
+                elif data.shape[-1] in (1, 3):
+                    data = data.transpose(2, 0, 1)
+                    if data.shape[0] == 1:
+                        data = np.repeat(data, 3, axis=0)
+                else:
+                    raise ValueError(f"Unsupported npy image shape {data.shape} for {path}")
+            else:
+                raise ValueError(f"Unsupported npy image shape {data.shape} for {path}")
             return data
         img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
         if img is None:
             raise FileNotFoundError(path)
         if img.ndim == 2:
-            img = img[None]
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        elif img.shape[2] == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
         else:
-            img = img.transpose(2, 0, 1)
-        return img.astype(np.float32)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img.astype(np.float32) / 255.0
+        return img.transpose(2, 0, 1)
 
     def _read_image(self, path: str | Path) -> np.ndarray:
         img = self._load_image_array(path)
-        if self.cfg.in_channels == 1 and img.shape[0] != 1:
-            if img.shape[0] == 3:
-                img = cv2.cvtColor(img.transpose(1, 2, 0), cv2.COLOR_BGR2GRAY)[None]
-            else:
-                img = img[:1]
-        elif self.cfg.in_channels == 3 and img.shape[0] != 3:
-            if img.shape[0] == 1:
-                img = cv2.cvtColor(img[0], cv2.COLOR_GRAY2BGR).transpose(2, 0, 1)
-            else:
-                raise ValueError(f"Unsupported channel layout for image {path}")
+        if img.shape[0] == 1:
+            img = np.repeat(img, 3, axis=0)
+        if img.shape[0] != self.cfg.in_channels:
+            raise ValueError(f"Expected {self.cfg.in_channels} channels but got {img.shape[0]} for {path}")
         resized = cv2.resize(img.transpose(1, 2, 0), self.cfg.img_size[::-1], interpolation=cv2.INTER_LINEAR)
         if resized.ndim == 2:
             resized = resized[None]
@@ -111,8 +118,8 @@ class SurgicalPlanningDataset(Dataset):
         return image, aux, gt
 
     def _standardize(self, image: np.ndarray) -> np.ndarray:
-        mean = float(image.mean())
-        std = float(image.std())
+        mean = image.mean(axis=(-2, -1), keepdims=True)
+        std = image.std(axis=(-2, -1), keepdims=True)
         return ((image - mean) / (std + 1e-6)).astype(np.float32)
 
     def _random_flip(

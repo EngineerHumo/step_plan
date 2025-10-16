@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import List
-
 import math
+from typing import List
 
 import torch
 import torch.nn as nn
@@ -14,19 +13,37 @@ from config import Config
 
 
 class InputFusion(nn.Module):
-    """Fuse raw image and auxiliary masks into a 3-channel tensor."""
+    """Fuse raw image and auxiliary masks into a backbone-ready tensor."""
 
     def __init__(self, in_img_c: int, in_aux_c: int, out_c: int = 3) -> None:
         super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_img_c + in_aux_c, 32, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, out_c, kernel_size=3, padding=1),
+        self.img_stem = nn.Sequential(
+            nn.Conv2d(in_img_c, 32, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.GELU(),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.GELU(),
+        )
+        self.aux_stem = nn.Sequential(
+            nn.Conv2d(in_aux_c, 16, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.GELU(),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.GELU(),
+        )
+        self.fuse = nn.Sequential(
+            nn.Conv2d(64, out_c, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_c),
+            nn.GELU(),
         )
 
     def forward(self, img: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
-        x = torch.cat([img, aux], dim=1)
-        return self.conv(x)
+        img_feat = self.img_stem(img)
+        aux_feat = self.aux_stem(aux)
+        fused = torch.cat([img_feat, aux_feat], dim=1)
+        return self.fuse(fused)
 
 
 class SegFormerBackbone(nn.Module):

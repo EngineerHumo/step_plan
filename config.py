@@ -7,7 +7,7 @@ class Config:
     """Global configuration for model, training, and export."""
 
     img_size: Tuple[int, int] = (1024, 1024)
-    in_channels: int = 1
+    in_channels: int = 3
     aux_mask_channels: int = 4
     num_queries: int = 4
     embed_dim: int = 256
@@ -28,6 +28,9 @@ class Config:
     w_area: float = 0.05
     w_exist_ce: float = 0.5
     w_cardinality: float = 0.2
+    w_unmatched_dice: float = 0.5
+    w_unmatched_bce: float = 0.25
+    w_roi_background: float = 0.3
 
     # Training parameters
     lr: float = 3e-4
