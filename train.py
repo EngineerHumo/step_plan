@@ -198,16 +198,19 @@ def _select_device(preferred: str) -> str:
 
 def _get_roi_mask(aux: torch.Tensor, cfg: Config) -> torch.Tensor:
     """Return a valid ROI mask, falling back to all-ones when empty."""
-
+    #print(cfg.roi_channel_index)
     if aux.size(1) == 0:
         shape = (aux.size(0), 1, aux.size(-2), aux.size(-1))
         return torch.ones(shape, dtype=aux.dtype, device=aux.device)
 
     roi = aux[:, cfg.roi_channel_index : cfg.roi_channel_index + 1].clone()
     flat = (roi > 0.5).flatten(2).sum(-1)
-    empty = flat == 0
-    if empty.any():
-        roi[empty] = 1.0
+    #print(roi.max())
+    #print(roi.shape)
+    #print(flat)
+    #empty = flat == 0
+    #if empty.any():
+    #    roi[empty] = 1.0
     return roi
 
 

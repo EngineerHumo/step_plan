@@ -16,7 +16,7 @@ class Config:
     feature_dims: Tuple[int, int, int, int] = (64, 128, 320, 512)
     use_timm: bool = True
     backbone_name: str = "mit_b0"
-    roi_channel_index: int = 0
+    roi_channel_index: int = 3
 
     # Loss weights
     w_dice: float = 1.0

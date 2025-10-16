@@ -168,6 +168,7 @@ class MaskDecoder(nn.Module):
             nn.Linear(D, 1),
         )
 
+
     def forward(self, feat_embed: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         B, D, H4, W4 = feat_embed.shape
         pos = self.posenc(feat_embed)
