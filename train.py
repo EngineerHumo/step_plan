@@ -13,6 +13,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
@@ -32,6 +33,7 @@ from losses import (
     existence_losses,
     forbidden_overlap_loss,
     overlap_penalty,
+    query_diversity_loss,
     tv_smoothness,
 )
 from matcher import bce_cost, dice_cost, hungarian_match
@@ -214,6 +216,37 @@ def _get_roi_mask(aux: torch.Tensor, cfg: Config) -> torch.Tensor:
     return roi
 
 
+def improved_cost_calculation(
+    mask_logits: torch.Tensor,
+    gt_masks: torch.Tensor,
+    roi: torch.Tensor | None,
+) -> torch.Tensor:
+    B, K, H, W = mask_logits.shape
+    Kgt = gt_masks.shape[1]
+
+    dice_cost_val = dice_cost(mask_logits, gt_masks, roi=roi)
+    bce_cost_val = bce_cost(mask_logits, gt_masks, roi=roi)
+
+    diversity_cost = mask_logits.new_zeros(B, K, Kgt)
+    if K > 1:
+        pred_masks = mask_logits.sigmoid().view(B, K, -1)
+        if roi is not None:
+            roi_flat = roi.view(B, 1, -1)
+            pred_masks = pred_masks * roi_flat
+        for b in range(B):
+            others = pred_masks[b]
+            for k in range(K):
+                other_indices = [i for i in range(K) if i != k]
+                if not other_indices:
+                    continue
+                other_mean = others[other_indices].mean(dim=0)
+                similarity = F.cosine_similarity(pred_masks[b, k], other_mean, dim=0)
+                diversity_cost[b, k] = similarity.clamp_min(0.0) * 0.1
+
+    cost = 0.6 * dice_cost_val + 0.4 * bce_cost_val + diversity_cost
+    return cost
+
+
 def train_one_epoch(
     model: FullModel,
     loader: DataLoader,
@@ -236,9 +269,7 @@ def train_one_epoch(
         mask_logits, exist_logits, _ = model(image, aux)
         pred_prob = mask_logits.sigmoid()
 
-        C_dice = dice_cost(mask_logits, gt_masks, roi=roi)
-        C_bce = bce_cost(mask_logits, gt_masks, roi=roi)
-        cost = 0.6 * C_dice + 0.4 * C_bce
+        cost = improved_cost_calculation(mask_logits, gt_masks, roi)
         matches = hungarian_match(cost, gt_valid)
 
         B, K, H, W = mask_logits.shape
@@ -266,6 +297,8 @@ def train_one_epoch(
         area_pen = area_prior_loss(pred_prob, matched_gt, roi=roi)
         exist_ce, card = existence_losses(exist_logits, [m[0] for m in matches], K_gt)
 
+        diversity_loss = query_diversity_loss(pred_prob)
+
         loss = (
             cfg.w_dice * dice_term
             + cfg.w_bce * bce_term
@@ -276,6 +309,7 @@ def train_one_epoch(
             + cfg.w_area * area_pen
             + cfg.w_exist_ce * exist_ce
             + cfg.w_cardinality * card
+            + 0.1 * diversity_loss
         )
 
         optimizer.zero_grad(set_to_none=True)
@@ -284,6 +318,14 @@ def train_one_epoch(
         total_loss += float(loss.item())
         print(gt_masks.max())
         print(pred_prob.max())
+        print(f"Cost matrix range: [{cost.min():.3f}, {cost.max():.3f}]")
+        for b, (rows, cols) in enumerate(matches):
+            if rows.numel() > 0:
+                print(f"Batch {b}: {len(rows)} matches - queries {rows.tolist()} -> targets {cols.tolist()}")
+            else:
+                print(f"Batch {b}: No matches")
+        pred_std = pred_prob.std(dim=1).mean()
+        print(f"Prediction std across queries: {pred_std:.4f}")
         if vis_logger is not None:
             vis_logger.log_batch(image, gt_masks, pred_prob)
             #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
