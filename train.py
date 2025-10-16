@@ -31,10 +31,14 @@ from losses import (
     boundary_alignment_loss,
     dice_loss,
     existence_losses,
+    matched_false_positive_loss,
     overlap_penalty,
+    query_cluster_separation_loss,
+    query_compactness_loss,
     query_diversity_loss,
     query_kernel_diversity_loss,
     tversky_loss,
+    unmatched_spillover_loss,
     tv_smoothness,
 )
 from matcher import bce_cost, dice_cost, hungarian_match
@@ -303,7 +307,7 @@ def train_one_epoch(
             matched_bce_raw = mask_logits.new_tensor(0.0)
 
         overlap_raw = overlap_penalty(pred_prob, roi=roi).mean()
-        overlap_weight = cfg.w_overlap * 1.3
+        overlap_weight = cfg.w_overlap * 1.5
         overlap_weighted = overlap_weight * overlap_raw
         tv_raw = tv_smoothness(pred_prob)
         tv_weighted = cfg.w_tv * tv_raw
@@ -314,6 +318,15 @@ def train_one_epoch(
         exist_ce_raw, card_raw = existence_losses(exist_logits, [m[0] for m in matches], K_gt)
         exist_weighted = cfg.w_exist_ce * exist_ce_raw
         card_weighted = cfg.w_cardinality * card_raw
+
+        matched_fp_raw = matched_false_positive_loss(
+            pred_prob,
+            matched_gt,
+            matched_mask,
+            roi=roi,
+            exist_logits=exist_logits,
+        )
+        matched_fp_weighted = cfg.w_matched_fp * matched_fp_raw
 
         diversity_raw = query_diversity_loss(pred_prob, mask=roi)
         diversity_weighted = 0.1 * diversity_raw
@@ -377,12 +390,37 @@ def train_one_epoch(
             unmatched_overlap_raw = mask_logits.new_tensor(0.0)
         unmatched_overlap_weighted = cfg.w_overlap * unmatched_overlap_raw
 
+        unmatched_spill_raw = unmatched_spillover_loss(
+            pred_prob,
+            unmatched_mask,
+            gt_masks,
+            roi=roi,
+            exist_logits=exist_logits,
+        )
+        unmatched_spill_weighted = cfg.w_unmatched_spill * unmatched_spill_raw
+
         matched_dice_weighted = cfg.w_dice * matched_dice_raw
         matched_bce_weighted = cfg.w_bce * matched_bce_raw
+
+        cluster_raw = query_cluster_separation_loss(
+            pred_prob,
+            matches,
+            roi=roi,
+            exist_logits=exist_logits,
+        )
+        cluster_weighted = cfg.w_query_cluster * cluster_raw
+
+        compact_raw = query_compactness_loss(
+            pred_prob,
+            roi=roi,
+            exist_logits=exist_logits,
+        )
+        compact_weighted = cfg.w_query_compact * compact_raw
 
         loss = (
             matched_dice_weighted
             + matched_bce_weighted
+            + matched_fp_weighted
             + overlap_weighted
             + tv_weighted
             + boundary_weighted
@@ -392,8 +430,11 @@ def train_one_epoch(
             + unmatched_dice_weighted
             + unmatched_bce_weighted
             + unmatched_overlap_weighted
+            + unmatched_spill_weighted
             + diversity_weighted
             + kernel_div_weighted
+            + cluster_weighted
+            + compact_weighted
         )
 
         optimizer.zero_grad(set_to_none=True)
@@ -406,14 +447,18 @@ def train_one_epoch(
             f"unmatched_dice: raw={unmatched_dice_raw.item():.4f}, weighted={unmatched_dice_weighted.item():.4f}",
             f"unmatched_bce: raw={unmatched_bce_raw.item():.4f}, weighted={unmatched_bce_weighted.item():.4f}",
             f"unmatched_overlap: raw={unmatched_overlap_raw.item():.4f}, weighted={unmatched_overlap_weighted.item():.4f}",
+            f"unmatched_spill: raw={unmatched_spill_raw.item():.4f}, weighted={unmatched_spill_weighted.item():.4f}",
             f"overlap_penalty: raw={overlap_raw.item():.4f}, weighted={overlap_weighted.item():.4f}",
             f"tv: raw={tv_raw.item():.4f}, weighted={tv_weighted.item():.4f}",
             f"boundary: raw={boundary_raw.item():.4f}, weighted={boundary_weighted.item():.4f}",
             f"area: raw={area_raw.item():.4f}, weighted={area_weighted.item():.4f}",
             f"exist_ce: raw={exist_ce_raw.item():.4f}, weighted={exist_weighted.item():.4f}",
             f"cardinality: raw={card_raw.item():.4f}, weighted={card_weighted.item():.4f}",
+            f"matched_fp: raw={matched_fp_raw.item():.4f}, weighted={matched_fp_weighted.item():.4f}",
             f"query_diversity: raw={diversity_raw.item():.4f}, weighted={diversity_weighted.item():.4f}",
             f"kernel_diversity: raw={kernel_div_raw.item():.4f}, weighted={kernel_div_weighted.item():.4f}",
+            f"cluster: raw={cluster_raw.item():.4f}, weighted={cluster_weighted.item():.4f}",
+            f"compact: raw={compact_raw.item():.4f}, weighted={compact_weighted.item():.4f}",
         ]
         print("Loss breakdown:")
         for entry in loss_report:
