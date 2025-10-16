@@ -159,7 +159,7 @@ class MaskDecoder(nn.Module):
             self.query_embed.data += pos_encoding * 0.1
         self.query_mlp = nn.Sequential(
             nn.Linear(D, D),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
             nn.Linear(D, D),
         )
         self.query_interaction = MHA(D, cfg.mha_heads)
@@ -189,7 +189,9 @@ class MaskDecoder(nn.Module):
         )
 
 
-    def forward(self, feat_embed: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, feat_embed: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         B, D, H4, W4 = feat_embed.shape
         pos = self.posenc(feat_embed)
         kv = pos.flatten(2).transpose(1, 2)
@@ -213,4 +215,4 @@ class MaskDecoder(nn.Module):
             mode="bilinear",
             align_corners=False,
         )
-        return mask_logits, exist_logits, lowres_masks
+        return mask_logits, exist_logits, lowres_masks, kernels

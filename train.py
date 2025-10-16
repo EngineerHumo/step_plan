@@ -188,8 +188,8 @@ class FullModel(nn.Module):
         feats = self.backbone(fused)
         feats = [adapter(feat) for adapter, feat in zip(self.adapters, feats)]
         pix_embed = self.pixel_decoder(feats)
-        mask_logits, exist_logits, lowres = self.mask_decoder(pix_embed)
-        return mask_logits, exist_logits, {"pix": pix_embed, "lowres": lowres}
+        mask_logits, exist_logits, lowres, kernels = self.mask_decoder(pix_embed)
+        return mask_logits, exist_logits, {"pix": pix_embed, "lowres": lowres, "kernels": kernels}
 
 
 def _select_device(preferred: str) -> str:
@@ -266,7 +266,7 @@ def train_one_epoch(
         roi = _get_roi_mask(aux, cfg)
         forbidden = aux[:, 1:3].sum(1, keepdim=True).clamp(max=1.0)
 
-        mask_logits, exist_logits, _ = model(image, aux)
+        mask_logits, exist_logits, decoder_out = model(image, aux)
         pred_prob = mask_logits.sigmoid()
 
         cost = improved_cost_calculation(mask_logits, gt_masks, roi)
