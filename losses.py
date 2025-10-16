@@ -172,6 +172,165 @@ def query_kernel_diversity_loss(kernels: torch.Tensor) -> torch.Tensor:
     return pairwise.mean()
 
 
+def _normalised_grid(height: int, width: int, device: torch.device, dtype: torch.dtype) -> tuple[torch.Tensor, torch.Tensor]:
+    y = torch.linspace(0.0, 1.0, steps=height, device=device, dtype=dtype).view(1, 1, height, 1)
+    x = torch.linspace(0.0, 1.0, steps=width, device=device, dtype=dtype).view(1, 1, 1, width)
+    return y, x
+
+
+def _centroid_coordinates(
+    prob: torch.Tensor,
+    roi: torch.Tensor | None = None,
+    eps: float = 1e-6,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if roi is not None:
+        prob = prob * roi
+    B, K, H, W = prob.shape
+    y_grid, x_grid = _normalised_grid(H, W, prob.device, prob.dtype)
+    mass = prob.sum(dim=(2, 3)).clamp_min(eps)
+    cy = (prob * y_grid).sum(dim=(2, 3)) / mass
+    cx = (prob * x_grid).sum(dim=(2, 3)) / mass
+    coords = torch.stack((cy, cx), dim=-1)
+    return coords, mass
+
+
+def matched_false_positive_loss(
+    pred_prob: torch.Tensor,
+    matched_gt: torch.Tensor,
+    matched_mask: torch.Tensor,
+    roi: torch.Tensor | None = None,
+    exist_logits: torch.Tensor | None = None,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    if roi is not None:
+        pred_prob = pred_prob * roi
+        matched_gt = matched_gt * roi
+    outside = pred_prob * (1.0 - matched_gt)
+    outside_sum = outside.sum(dim=(2, 3))
+    denom = pred_prob.sum(dim=(2, 3)).clamp_min(eps)
+    ratio = outside_sum / denom
+    if exist_logits is not None:
+        ratio = ratio * torch.sigmoid(exist_logits)
+    if matched_mask.any():
+        return ratio[matched_mask].mean()
+    return pred_prob.new_tensor(0.0)
+
+
+def unmatched_spillover_loss(
+    pred_prob: torch.Tensor,
+    unmatched_mask: torch.Tensor,
+    gt_masks: torch.Tensor,
+    roi: torch.Tensor | None = None,
+    exist_logits: torch.Tensor | None = None,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    if roi is not None:
+        pred_prob = pred_prob * roi
+        gt_masks = gt_masks * roi
+    B, K, H, W = pred_prob.shape
+    if gt_masks.size(0) != B:
+        raise ValueError("gt_masks batch dimension must match predictions")
+    gt_flat = gt_masks.view(B, gt_masks.size(1), -1)
+    pred_flat = pred_prob.view(B, K, -1)
+    exist_prob = torch.sigmoid(exist_logits) if exist_logits is not None else None
+    losses = []
+    for b in range(B):
+        indices = torch.nonzero(unmatched_mask[b], as_tuple=False).squeeze(1)
+        if indices.numel() == 0:
+            continue
+        pred_b = pred_flat[b, indices]
+        if pred_b.numel() == 0:
+            continue
+        gt_b = gt_flat[b]
+        if gt_b.numel() == 0:
+            continue
+        inter = torch.matmul(pred_b, gt_b.transpose(0, 1))
+        pred_mass = pred_b.sum(dim=1, keepdim=True).clamp_min(eps)
+        overlap_ratio = inter / pred_mass
+        best_overlap = overlap_ratio.max(dim=1).values
+        spill = 1.0 - best_overlap
+        if exist_prob is not None:
+            spill = spill * exist_prob[b, indices]
+        losses.append(spill.mean())
+    if losses:
+        return torch.stack(losses).mean()
+    return pred_prob.new_tensor(0.0)
+
+
+def query_compactness_loss(
+    pred_prob: torch.Tensor,
+    roi: torch.Tensor | None = None,
+    exist_logits: torch.Tensor | None = None,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    coords, mass = _centroid_coordinates(pred_prob, roi=roi, eps=eps)
+    if roi is not None:
+        pred_prob = pred_prob * roi
+    B, K, H, W = pred_prob.shape
+    y_grid, x_grid = _normalised_grid(H, W, pred_prob.device, pred_prob.dtype)
+    cy = coords[..., 0].view(B, K, 1, 1)
+    cx = coords[..., 1].view(B, K, 1, 1)
+    sq_dist = (y_grid - cy) ** 2 + (x_grid - cx) ** 2
+    dispersion = (pred_prob * sq_dist).sum(dim=(2, 3)) / mass
+    if exist_logits is not None:
+        dispersion = dispersion * torch.sigmoid(exist_logits)
+    return dispersion.mean()
+
+
+def query_cluster_separation_loss(
+    pred_prob: torch.Tensor,
+    matches: Sequence[tuple[torch.Tensor, torch.Tensor]],
+    roi: torch.Tensor | None = None,
+    exist_logits: torch.Tensor | None = None,
+    margin: float = 0.2,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    coords, _ = _centroid_coordinates(pred_prob, roi=roi, eps=eps)
+    exist_prob = torch.sigmoid(exist_logits) if exist_logits is not None else None
+    cohesion_terms: list[torch.Tensor] = []
+    separation_terms: list[torch.Tensor] = []
+    for b, (rows, cols) in enumerate(matches):
+        if rows.numel() == 0:
+            continue
+        centroids = coords[b, rows]
+        weights = None
+        if exist_prob is not None:
+            weights = exist_prob[b, rows]
+        unique_cols = torch.unique(cols)
+        for gt_id in unique_cols:
+            mask = cols == gt_id
+            cluster_rows = rows[mask]
+            if cluster_rows.numel() <= 1:
+                continue
+            cluster_centroids = coords[b, cluster_rows]
+            diff = cluster_centroids.unsqueeze(1) - cluster_centroids.unsqueeze(0)
+            dist = torch.sqrt((diff ** 2).sum(dim=-1) + eps)
+            tri = torch.triu_indices(cluster_rows.numel(), cluster_rows.numel(), 1, device=dist.device)
+            pair_dist = dist[tri[0], tri[1]]
+            if weights is not None:
+                cluster_weights = weights[mask]
+                weight_matrix = cluster_weights.unsqueeze(1) * cluster_weights.unsqueeze(0)
+                pair_weights = weight_matrix[tri[0], tri[1]]
+                term = (pair_dist * pair_weights).mean()
+            else:
+                term = pair_dist.mean()
+            cohesion_terms.append(term)
+        if rows.numel() <= 1:
+            continue
+        for i in range(rows.numel()):
+            for j in range(i + 1, rows.numel()):
+                if cols[i] == cols[j]:
+                    continue
+                dist = torch.norm(centroids[i] - centroids[j], p=2)
+                penalty = F.relu(margin - dist)
+                if weights is not None:
+                    penalty = penalty * weights[i] * weights[j]
+                separation_terms.append(penalty)
+    cohesion = torch.stack(cohesion_terms).mean() if cohesion_terms else pred_prob.new_tensor(0.0)
+    separation = torch.stack(separation_terms).mean() if separation_terms else pred_prob.new_tensor(0.0)
+    return cohesion + separation
+
+
 def existence_losses(exist_logits: torch.Tensor, match_rows: Sequence[torch.Tensor], K_gt: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     B, K = exist_logits.shape
     targets = torch.zeros_like(exist_logits, dtype=torch.float32)
@@ -198,5 +357,9 @@ __all__ = [
     "area_prior_loss",
     "query_diversity_loss",
     "query_kernel_diversity_loss",
+    "matched_false_positive_loss",
+    "unmatched_spillover_loss",
+    "query_compactness_loss",
+    "query_cluster_separation_loss",
     "existence_losses",
 ]
