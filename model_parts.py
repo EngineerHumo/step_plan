@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -145,12 +147,27 @@ class MaskDecoder(nn.Module):
         E = cfg.mask_embed_dim
         K = cfg.num_queries
 
-        self.query_embed = nn.Parameter(torch.randn(K, D) * 0.02)
+        self.query_embed = nn.Parameter(torch.randn(K, D) * 0.1)
+
+        with torch.no_grad():
+            pos_encoding = torch.zeros(K, D)
+            for i in range(K):
+                for j in range(0, D, 2):
+                    pos_encoding[i, j] = math.sin(i / (10000 ** (2 * j / D)))
+                    if j + 1 < D:
+                        pos_encoding[i, j + 1] = math.cos(i / (10000 ** (2 * j / D)))
+            self.query_embed.data += pos_encoding * 0.1
         self.query_mlp = nn.Sequential(
             nn.Linear(D, D),
             nn.ReLU(inplace=True),
             nn.Linear(D, D),
         )
+        self.query_interaction = nn.Sequential(
+            nn.Linear(D, D),
+            nn.ReLU(inplace=True),
+            nn.Linear(D, D),
+        )
+
         self.mha = MHA(D, cfg.mha_heads)
         self.norm = nn.LayerNorm(D)
 
@@ -174,6 +191,7 @@ class MaskDecoder(nn.Module):
         pos = self.posenc(feat_embed)
         kv = pos.flatten(2).transpose(1, 2)
         queries = self.query_embed.unsqueeze(0).expand(B, -1, -1)
+        queries = self.query_interaction(queries)
         queries = self.query_mlp(queries)
         queries = self.mha(queries, kv, kv)
         queries = self.norm(queries)
