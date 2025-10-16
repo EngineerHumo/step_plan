@@ -157,18 +157,19 @@ class MaskDecoder(nn.Module):
                     if j + 1 < D:
                         pos_encoding[i, j + 1] = math.cos(i / (10000 ** (2 * j / D)))
             self.query_embed.data += pos_encoding * 0.1
-        self.query_norm = nn.LayerNorm(D)
-        self.query_interaction = nn.Sequential(
-            nn.Linear(D, D),
-            nn.GELU(),
-            nn.Linear(D, D),
-        )
         self.query_mlp = nn.Sequential(
             nn.Linear(D, D),
             nn.GELU(),
             nn.Linear(D, D),
         )
-        self.query_dropout = nn.Dropout(cfg.query_dropout if hasattr(cfg, "query_dropout") else 0.1)
+        self.query_interaction = MHA(D, cfg.mha_heads)
+        self.query_norm = nn.LayerNorm(D)
+        self.query_ffn = nn.Sequential(
+            nn.Linear(D, D * 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(D * 4, D),
+        )
+        self.query_ffn_norm = nn.LayerNorm(D)
 
         self.mha = MHA(D, cfg.mha_heads)
         self.norm = nn.LayerNorm(D)
@@ -195,11 +196,13 @@ class MaskDecoder(nn.Module):
         pos = self.posenc(feat_embed)
         kv = pos.flatten(2).transpose(1, 2)
         queries = self.query_embed.unsqueeze(0).expand(B, -1, -1)
-        base_queries = self.query_norm(queries)
-        queries = queries + self.query_dropout(self.query_interaction(base_queries))
-        queries = queries + self.query_dropout(self.query_mlp(self.query_norm(queries)))
-        attn_out = self.mha(self.query_norm(queries), kv, kv)
-        queries = self.norm(queries + attn_out)
+        queries = queries + self.query_interaction(queries, queries, queries)
+        queries = self.query_norm(queries)
+        queries = queries + self.query_ffn(queries)
+        queries = self.query_ffn_norm(queries)
+        queries = self.query_mlp(queries)
+        queries = self.mha(queries, kv, kv)
+        queries = self.norm(queries)
 
         kernels = self.kernel_head(queries)
         exist_logits = self.exist_head(queries).squeeze(-1)
