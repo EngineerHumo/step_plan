@@ -11,6 +11,11 @@ import torch.nn.functional as F
 
 from config import Config
 
+try:
+    from transformers import SegformerModel
+except ImportError:  # pragma: no cover - optional dependency at runtime
+    SegformerModel = None  # type: ignore[assignment]
+
 
 class InputFusion(nn.Module):
     """Fuse raw image and auxiliary masks into a backbone-ready tensor."""
@@ -54,33 +59,38 @@ class SegFormerBackbone(nn.Module):
         self.cfg = cfg
         self.encoder: nn.Module | None = None
         self.out_channels: List[int]
-        if cfg.use_timm:
+        self.encoder_strides: List[int] = []
+        if cfg.use_transformers and SegformerModel is not None:
             try:
-                import timm
-                print(timm.list_models())
-
-                self.encoder = timm.create_model(
-                    cfg.backbone_name,
-                    features_only=True,
-                    out_indices=(1, 2, 3, 4),
-                    pretrained=True,
-                )
-                self.out_channels = list(self.encoder.feature_info.channels())
+                self.encoder = SegformerModel.from_pretrained(cfg.backbone_name)
+                self.out_channels = list(self.encoder.config.hidden_sizes)
+                self.encoder_strides = list(getattr(self.encoder.config, "encoder_stride", []))
+                if len(self.encoder_strides) != len(self.out_channels):
+                    self.encoder_strides = [
+                        2 ** (i + 2) for i in range(len(self.out_channels))
+                    ]
                 print(
-                    f"[SegFormerBackbone] Using timm pretrained model '{cfg.backbone_name}'."
+                    f"[SegFormerBackbone] Using transformers pretrained model '{cfg.backbone_name}'."
                 )
             except Exception as exc:
                 self.encoder = None
                 print(
-                    "[SegFormerBackbone] Failed to load timm pretrained model "
+                    "[SegFormerBackbone] Failed to load transformers pretrained model "
                     f"'{cfg.backbone_name}': {exc}. Falling back to custom encoder."
                 )
+        elif cfg.use_transformers and SegformerModel is None:
+            print(
+                "[SegFormerBackbone] transformers package not available; "
+                "falling back to custom encoder."
+            )
         if self.encoder is None:
             self.out_channels = list(cfg.feature_dims)
-            if cfg.use_timm:
+            if cfg.use_transformers:
                 print("[SegFormerBackbone] Initialising custom fallback encoder.")
             else:
-                print("[SegFormerBackbone] Using custom encoder (timm disabled in config).")
+                print(
+                    "[SegFormerBackbone] Using custom encoder (pretrained backbone disabled in config)."
+                )
             layers: List[nn.Module] = []
             in_ch = 3
             for out_ch in cfg.feature_dims:
@@ -96,9 +106,62 @@ class SegFormerBackbone(nn.Module):
         else:
             self.fallback = nn.ModuleList()
 
+    def _reshape_hidden(
+        self,
+        hidden: torch.Tensor,
+        stride: int,
+        spatial: tuple[int, int],
+        expected_channels: int,
+    ) -> torch.Tensor:
+        if hidden.dim() == 4:
+            if hidden.shape[1] == expected_channels:
+                return hidden
+            if hidden.shape[-1] == expected_channels:
+                return hidden.permute(0, 3, 1, 2)
+            raise RuntimeError(
+                "SegFormer encoder returned unexpected feature shape: "
+                f"{hidden.shape} (expected channel dim {expected_channels})."
+            )
+        if hidden.dim() != 3:
+            raise ValueError("Unexpected hidden state shape from SegFormer encoder")
+        B, N, C = hidden.shape
+        H = max(1, math.ceil(spatial[0] / stride))
+        W = max(1, math.ceil(spatial[1] / stride))
+        if H * W != N:
+            # fallback assuming flattened tokens follow stride order
+            H = max(1, spatial[0] // stride)
+            W = max(1, spatial[1] // stride)
+        return hidden.transpose(1, 2).reshape(B, C, H, W)
+
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         if self.encoder is not None:
-            feats: List[torch.Tensor] = self.encoder(x)
+            outputs = self.encoder(
+                x,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+            hidden_states = getattr(outputs, "hidden_states", None)
+            if hidden_states is None:
+                hidden_states = getattr(outputs, "encoder_hidden_states", None)
+            if hidden_states is None:
+                raise RuntimeError("SegFormer encoder did not return hidden states.")
+            stages = hidden_states[-len(self.out_channels) :]
+            feats: List[torch.Tensor] = []
+            spatial = (x.shape[-2], x.shape[-1])
+            for idx, hidden in enumerate(stages):
+                stride = self.encoder_strides[idx] if idx < len(self.encoder_strides) else 2 ** (idx + 2)
+                feat = self._reshape_hidden(
+                    hidden,
+                    stride,
+                    spatial,
+                    self.out_channels[idx],
+                )
+                if feat.shape[1] != self.out_channels[idx]:
+                    raise RuntimeError(
+                        "SegFormer feature channels mismatch: "
+                        f"expected {self.out_channels[idx]}, got {feat.shape[1]}"
+                    )
+                feats.append(feat)
             return feats
         feats: List[torch.Tensor] = []
         cur = x

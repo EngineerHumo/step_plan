@@ -14,8 +14,8 @@ class Config:
     mask_embed_dim: int = 128
     mha_heads: int = 8
     feature_dims: Tuple[int, int, int, int] = (64, 128, 320, 512)
-    use_timm: bool = True
-    backbone_name: str = "segformer_b0"
+    use_transformers: bool = True
+    backbone_name: str = "nvidia/mit-b3"
     roi_channel_index: int = 3
 
     # Loss weights
