@@ -1,9 +1,9 @@
 numpy
 opencv-python
-timm
 torch
 torchvision
 scipy
 onnx
 onnxruntime
+transformers
 visdom

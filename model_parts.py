@@ -54,33 +54,30 @@ class SegFormerBackbone(nn.Module):
         self.cfg = cfg
         self.encoder: nn.Module | None = None
         self.out_channels: List[int]
-        if cfg.use_timm:
+        if cfg.use_pretrained_backbone:
             try:
-                import timm
-                print(timm.list_models())
+                from transformers import SegformerModel
 
-                self.encoder = timm.create_model(
-                    cfg.backbone_name,
-                    features_only=True,
-                    out_indices=(1, 2, 3, 4),
-                    pretrained=True,
-                )
-                self.out_channels = list(self.encoder.feature_info.channels())
+                self.encoder = SegformerModel.from_pretrained(cfg.backbone_name)
+                self.out_channels = list(self.encoder.config.hidden_sizes)
                 print(
-                    f"[SegFormerBackbone] Using timm pretrained model '{cfg.backbone_name}'."
+                    "[SegFormerBackbone] Using Hugging Face SegFormer backbone "
+                    f"'{cfg.backbone_name}'."
                 )
             except Exception as exc:
                 self.encoder = None
                 print(
-                    "[SegFormerBackbone] Failed to load timm pretrained model "
+                    "[SegFormerBackbone] Failed to load pretrained SegFormer model "
                     f"'{cfg.backbone_name}': {exc}. Falling back to custom encoder."
                 )
         if self.encoder is None:
             self.out_channels = list(cfg.feature_dims)
-            if cfg.use_timm:
+            if cfg.use_pretrained_backbone:
                 print("[SegFormerBackbone] Initialising custom fallback encoder.")
             else:
-                print("[SegFormerBackbone] Using custom encoder (timm disabled in config).")
+                print(
+                    "[SegFormerBackbone] Using custom encoder (pretrained backbone disabled in config)."
+                )
             layers: List[nn.Module] = []
             in_ch = 3
             for out_ch in cfg.feature_dims:
@@ -98,7 +95,42 @@ class SegFormerBackbone(nn.Module):
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         if self.encoder is not None:
-            feats: List[torch.Tensor] = self.encoder(x)
+            encoder_outputs = self.encoder(
+                pixel_values=x,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+            hidden_states = encoder_outputs.hidden_states
+            if hidden_states is None or len(hidden_states) < 4:
+                raise RuntimeError(
+                    "[SegFormerBackbone] Expected hidden states from pretrained encoder."
+                )
+            selected_states = hidden_states[-4:]
+            height, width = x.shape[-2], x.shape[-1]
+            resolutions: List[tuple[int, int]] = []
+            cur_h, cur_w = height // 4, width // 4
+            resolutions.append((cur_h, cur_w))
+            for _ in range(3):
+                cur_h = max(cur_h // 2, 1)
+                cur_w = max(cur_w // 2, 1)
+                resolutions.append((cur_h, cur_w))
+            feats: List[torch.Tensor] = []
+            for state, (h, w) in zip(selected_states, resolutions):
+                if state.dim() == 4:
+                    feat = state
+                elif state.dim() == 3:
+                    B, seq_len, C = state.shape
+                    if h * w != seq_len:
+                        raise RuntimeError(
+                            "[SegFormerBackbone] Hidden state sequence length does not "
+                            "match expected spatial resolution."
+                        )
+                    feat = state.transpose(1, 2).reshape(B, C, h, w)
+                else:
+                    raise RuntimeError(
+                        "[SegFormerBackbone] Unsupported hidden state dimensionality."
+                    )
+                feats.append(feat)
             return feats
         feats: List[torch.Tensor] = []
         cur = x
