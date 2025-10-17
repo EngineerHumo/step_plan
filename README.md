@@ -51,7 +51,7 @@ python -u train.py --synthetic --synthetic_samples 8 --epochs 1 --save_dir runs/
 
 ## 模型结构 / Model Architecture
 - **InputFusion**：将原始图像与 4 通道上游掩膜融合为 3 通道输入。
-- **Backbone**：默认使用 `timm` 的 SegFormer-B0 (`mit_b0`)，若不可用则回退到轻量卷积金字塔。
+- **Backbone**：默认使用 Hugging Face Transformers 的 SegFormer-B3 (`nvidia/mit-b3`)，若不可用则回退到轻量卷积金字塔。
 - **Pixel Decoder**：多尺度特征自顶向下融合，输出低分辨率像素嵌入。
 - **Mask Decoder**：`K` 个可学习查询通过标准 Multi-Head Attention 获取上下文，并预测掩膜原型与存在性得分。
 - **Inference Output**：`K` 张子区域概率图 + `K` 个存在性概率，可根据阈值灵活选择实际子区域数。
@@ -92,7 +92,7 @@ python -u train.py --synthetic --synthetic_samples 8 --epochs 1 --save_dir runs/
 
 ## 备注 / Notes
 - 推理路径完全不依赖训练阶段的匈牙利匹配或损失计算，保证 ONNX 导出的可行性。
-- 若环境中无法安装 `timm`，自动切换到内置的 CNN 备选骨干网络（无预训练）。
+- 若环境中无法安装 `transformers`，自动切换到内置的 CNN 备选骨干网络（无预训练）。
 - 项目遵循 PyTorch ≥ 2.0、Python ≥ 3.10，且避免使用自定义 CUDA 运算。
 
 欢迎根据具体医疗场景调整损失权重与后处理策略。
