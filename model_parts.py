@@ -57,6 +57,7 @@ class SegFormerBackbone(nn.Module):
         if cfg.use_timm:
             try:
                 import timm
+                print(timm.list_models())
 
                 self.encoder = timm.create_model(
                     cfg.backbone_name,

@@ -15,7 +15,7 @@ class Config:
     mha_heads: int = 8
     feature_dims: Tuple[int, int, int, int] = (64, 128, 320, 512)
     use_timm: bool = True
-    backbone_name: str = "mit_b0"
+    backbone_name: str = "segformer_b0"
     roi_channel_index: int = 3
 
     # Loss weights
