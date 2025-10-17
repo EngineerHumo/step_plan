@@ -65,10 +65,21 @@ class SegFormerBackbone(nn.Module):
                     pretrained=True,
                 )
                 self.out_channels = list(self.encoder.feature_info.channels())
-            except Exception:
+                print(
+                    f"[SegFormerBackbone] Using timm pretrained model '{cfg.backbone_name}'."
+                )
+            except Exception as exc:
                 self.encoder = None
+                print(
+                    "[SegFormerBackbone] Failed to load timm pretrained model "
+                    f"'{cfg.backbone_name}': {exc}. Falling back to custom encoder."
+                )
         if self.encoder is None:
             self.out_channels = list(cfg.feature_dims)
+            if cfg.use_timm:
+                print("[SegFormerBackbone] Initialising custom fallback encoder.")
+            else:
+                print("[SegFormerBackbone] Using custom encoder (timm disabled in config).")
             layers: List[nn.Module] = []
             in_ch = 3
             for out_ch in cfg.feature_dims:
