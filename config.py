@@ -42,6 +42,7 @@ class Config:
     max_epochs: int = 100
     device: str = "cuda"
     save_dir: str = "runs/exp0"
+    val_interval: int = 10
 
     # Data augmentation parameters (inspired by nnU-Net defaults)
     aug_horizontal_flip_prob: float = 0.5

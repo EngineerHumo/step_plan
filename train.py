@@ -153,6 +153,7 @@ class VisdomLogger:
         gt_masks: torch.Tensor,
         pred_prob: torch.Tensor,
         roi: torch.Tensor,
+        split: str = "Train",
     ) -> None:
         if not self.enabled or self.vis is None:
             return
@@ -165,13 +166,33 @@ class VisdomLogger:
             gt_combined_grid = self._to_grid(combined_gt, normalize=True)
             pred_combined_grid = self._to_grid(combined_pred, normalize=True)
 
-            self._show("inputs", inputs_grid, "Train/Input")
-            self._show("labels_queries", gt_grid, "Train/GT_Queries (4x6)")
-            self._show("outputs_queries", pred_grid, "Train/Pred_Queries (4x6)")
-            self._show("labels_combined", gt_combined_grid, "Train/Label_Combined")
-            self._show("outputs_combined", pred_combined_grid, "Train/Output_Combined")
+            prefix = split.lower()
+            title_prefix = split.capitalize()
 
-            self.global_step += 1
+            self._show(f"{prefix}_inputs", inputs_grid, f"{title_prefix}/Input")
+            self._show(
+                f"{prefix}_labels_queries",
+                gt_grid,
+                f"{title_prefix}/GT_Queries (4x6)",
+            )
+            self._show(
+                f"{prefix}_outputs_queries",
+                pred_grid,
+                f"{title_prefix}/Pred_Queries (4x6)",
+            )
+            self._show(
+                f"{prefix}_labels_combined",
+                gt_combined_grid,
+                f"{title_prefix}/Label_Combined",
+            )
+            self._show(
+                f"{prefix}_outputs_combined",
+                pred_combined_grid,
+                f"{title_prefix}/Output_Combined",
+            )
+
+            if prefix == "train":
+                self.global_step += 1
         except Exception as exc:
             print(f"[Visdom] Logging error: {exc}")
             self.enabled = False
@@ -505,23 +526,29 @@ def train_one_epoch(
                 "kernel_div_weighted": float(kernel_div_weighted.item()),
             }
             vis_logger.log_losses(loss_dict)
-            vis_logger.log_batch(image, gt_masks, pred_prob, roi)
+            vis_logger.log_batch(image, gt_masks, pred_prob, roi, split="Train")
             #vis_logger.log_batch(image, gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,1,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:],gt_masks[:,0,:,:], pred_prob[:,0,:,:])
     return total_loss / max(1, len(loader))
 
 
 @torch.no_grad()
-def evaluate(model: FullModel, loader: DataLoader, cfg: Config) -> Dict[str, float]:
+def evaluate(
+    model: FullModel,
+    loader: DataLoader,
+    cfg: Config,
+    vis_logger: Optional[VisdomLogger] = None,
+) -> Dict[str, float]:
     model.eval()
     total_dice = 0.0
     matched_total = 0
+    logged_visuals = False
     for batch in loader:
         image = batch["image"].to(cfg.device)
         aux = batch["aux"].to(cfg.device)
         gt_masks = batch["gt_masks"].to(cfg.device)
         gt_valid = batch["gt_valid"].to(cfg.device)
 
-        roi = _get_roi_mask(aux, cfg)
+        roi = _get_roi_mask(aux, cfg).to(image.dtype)
         mask_logits, exist_logits, _ = model(image, aux)
         pred_prob = mask_logits.sigmoid() * roi
         cost = dice_cost(mask_logits, gt_masks, roi=roi)
@@ -540,6 +567,9 @@ def evaluate(model: FullModel, loader: DataLoader, cfg: Config) -> Dict[str, flo
         if matched_mask.any():
             total_dice += float(dice_vals[matched_mask].mean().item())
             matched_total += 1
+        if vis_logger is not None and not logged_visuals:
+            vis_logger.log_batch(image, gt_masks, pred_prob, roi, split="Val")
+            logged_visuals = True
     if matched_total == 0:
         return {"dice": 0.0}
     return {"dice": total_dice / matched_total}
@@ -594,6 +624,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Maximum number of samples to visualise per batch",
     )
+    parser.add_argument(
+        "--val_interval",
+        type=int,
+        default=None,
+        help="Number of epochs between validation runs",
+    )
     return parser.parse_args()
 
 
@@ -614,6 +650,8 @@ def main() -> None:
         cfg.device = args.device
     if args.epochs is not None:
         cfg.max_epochs = int(args.epochs)
+    if args.val_interval is not None and args.val_interval > 0:
+        cfg.val_interval = int(args.val_interval)
     if args.visdom:
         cfg.visdom_enabled = True
     if args.visdom_env is not None:
@@ -678,19 +716,30 @@ def main() -> None:
         start_time = time.time()
         train_loss = train_one_epoch(model, train_loader, optimizer, cfg, vis_logger=vis_logger)
         elapsed = time.time() - start_time
-        metrics = {"dice": 0.0}
-        if val_loader is not None:
-            metrics = evaluate(model, val_loader, cfg)
-            if metrics["dice"] > best_metric:
-                best_metric = metrics["dice"]
-                save_checkpoint(save_dir / "best.pt", model, optimizer, epoch + 1, cfg, best_metric)
+        val_metrics: Optional[Dict[str, float]] = None
+        should_validate = (
+            val_loader is not None
+            and (((epoch + 1) % cfg.val_interval == 0) or (epoch == cfg.max_epochs - 1))
+        )
+        if should_validate and val_loader is not None:
+            val_metrics = evaluate(model, val_loader, cfg, vis_logger=vis_logger)
+            if val_metrics["dice"] > best_metric:
+                best_metric = val_metrics["dice"]
+                save_checkpoint(
+                    save_dir / "best.pt",
+                    model,
+                    optimizer,
+                    epoch + 1,
+                    cfg,
+                    best_metric,
+                )
         save_checkpoint(save_dir / "last.pt", model, optimizer, epoch + 1, cfg, best_metric)
         print(
             json.dumps(
                 {
                     "epoch": epoch + 1,
                     "train_loss": train_loss,
-                    "val_dice": metrics.get("dice", 0.0),
+                    "val_dice": None if val_metrics is None else val_metrics.get("dice", 0.0),
                     "elapsed_sec": elapsed,
                 }
             )
