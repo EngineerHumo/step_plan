@@ -443,19 +443,19 @@ def train_one_epoch(
             + matched_bce_weighted
             + matched_fp_weighted
             + overlap_weighted
-            + tv_weighted
-            + boundary_weighted
-            + area_weighted
+            #+ tv_weighted
+            #+ boundary_weighted
+            #+ area_weighted
             + exist_weighted
             + card_weighted
-            + unmatched_dice_weighted
-            + unmatched_bce_weighted
-            + unmatched_overlap_weighted
-            + unmatched_spill_weighted
-            + diversity_weighted
-            + kernel_div_weighted
+            #+ unmatched_dice_weighted
+            #+ unmatched_bce_weighted
+            #+ unmatched_overlap_weighted
+            #+ unmatched_spill_weighted
+            #+ diversity_weighted
+            #+ kernel_div_weighted
             + cluster_weighted
-            + compact_weighted
+            #+ compact_weighted
         )
 
         optimizer.zero_grad(set_to_none=True)

@@ -15,13 +15,13 @@ class Config:
     mha_heads: int = 8
     feature_dims: Tuple[int, int, int, int] = (64, 128, 320, 512)
     use_transformers: bool = True
-    backbone_name: str = "nvidia/mit-b3"
+    backbone_name: str = "nvidia/mit-b1"
     roi_channel_index: int = 3
 
     # Loss weights
     w_dice: float = 1.15
     w_bce: float = 0.6
-    w_overlap: float = 0.25
+    w_overlap: float = 2.5
     w_tv: float = 0.05
     w_boundary: float = 0.2
     w_forbidden: float = 1.0
@@ -31,10 +31,12 @@ class Config:
     w_unmatched_dice: float = 0.5
     w_unmatched_bce: float = 0.25
     w_roi_background: float = 0.3
-    w_matched_fp: float = 0.45
+    w_matched_fp: float = 4.5
     w_unmatched_spill: float = 0.35
-    w_query_cluster: float = 0.4
-    w_query_compact: float = 0.3
+    #w_query_cluster: float = 0.4
+    #w_query_compact: float = 0.3
+    w_query_cluster: float = 5
+    w_query_compact: float = 8
 
     # Training parameters
     lr: float = 3e-4
