@@ -235,10 +235,14 @@ class SurgicalPlanningDataset(Dataset):
             "aux": torch.from_numpy(aux),
             "gt_masks": torch.from_numpy(gt),
             "K_gt": torch.tensor(gt.shape[0], dtype=torch.long),
+            "meta": {
+                "image_path": str(item["image"]),
+                "case_id": Path(item["image"]).parent.name,
+            },
         }
 
 
-def collate_fn(batch: List[Dict[str, Any]], cfg: Config) -> Dict[str, torch.Tensor]:
+def collate_fn(batch: List[Dict[str, Any]], cfg: Config) -> Dict[str, Any]:
     images = torch.stack([b["image"] for b in batch], dim=0)
     aux = torch.stack([b["aux"] for b in batch], dim=0)
     B = images.shape[0]
@@ -260,6 +264,7 @@ def collate_fn(batch: List[Dict[str, Any]], cfg: Config) -> Dict[str, torch.Tens
         "gt_masks": gt_masks,
         "gt_valid": gt_valid,
         "K_gt": torch.tensor(K_gt_list, dtype=torch.long),
+        "meta": [b.get("meta", {}) for b in batch],
     }
 
 
