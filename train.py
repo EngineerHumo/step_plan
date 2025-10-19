@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -17,6 +18,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
+
+import cv2
 
 from config import Config
 from dataset import (
@@ -575,6 +578,62 @@ def evaluate(
     return {"dice": total_dice / matched_total}
 
 
+@torch.no_grad()
+def save_validation_predictions(
+    model: FullModel,
+    loader: DataLoader,
+    cfg: Config,
+    epoch: int,
+    output_root: Path | None = None,
+) -> None:
+    """Save validation predictions for visual inspection."""
+
+    model.eval()
+    root = Path("runs/output") if output_root is None else Path(output_root)
+    epoch_dir = root / f"epoch_{epoch:04d}"
+    if epoch_dir.exists():
+        shutil.rmtree(epoch_dir)
+    epoch_dir.mkdir(parents=True, exist_ok=True)
+
+    sample_idx = 0
+    for batch in loader:
+        images = batch["image"].to(cfg.device)
+        aux = batch["aux"].to(cfg.device)
+        roi = _get_roi_mask(aux, cfg).to(images.dtype)
+
+        mask_logits, _, _ = model(images, aux)
+        pred_prob = mask_logits.sigmoid() * roi
+
+        meta_list = batch.get("meta", [{} for _ in range(images.size(0))])
+        for b in range(images.size(0)):
+            meta = meta_list[b] if b < len(meta_list) else {}
+            image_path = meta.get("image_path")
+            case_id = meta.get("case_id")
+            if not case_id:
+                if image_path is not None:
+                    case_id = Path(image_path).stem
+                else:
+                    case_id = f"sample_{sample_idx:04d}"
+
+            case_dir = epoch_dir / case_id
+            case_dir.mkdir(parents=True, exist_ok=True)
+
+            probs = pred_prob[b].detach().cpu().numpy()
+            combined = probs.max(axis=0)
+
+            for q, prob in enumerate(probs):
+                out_path = case_dir / f"query_{q:02d}.png"
+                cv2.imwrite(str(out_path), (prob * 255).clip(0, 255).astype(np.uint8))
+
+            combined_path = case_dir / "combined.png"
+            cv2.imwrite(
+                str(combined_path),
+                (combined * 255).clip(0, 255).astype(np.uint8),
+            )
+
+            sample_idx += 1
+
+
 def save_checkpoint(path: Path, model: FullModel, optimizer: optim.Optimizer, epoch: int, cfg: Config, best_metric: float) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -723,6 +782,7 @@ def main() -> None:
         )
         if should_validate and val_loader is not None:
             val_metrics = evaluate(model, val_loader, cfg, vis_logger=vis_logger)
+            save_validation_predictions(model, val_loader, cfg, epoch + 1)
             if val_metrics["dice"] > best_metric:
                 best_metric = val_metrics["dice"]
                 save_checkpoint(
