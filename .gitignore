@@ -107,5 +107,6 @@ ENV/
 *.pdf
 *.pth
 *.onnx
+*.pt
 
 !documentation/assets/scribble_example.png
