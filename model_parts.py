@@ -10,12 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from config import Config
-
-try:
-    #from transformers import SegformerModel
-    from transformers import SegformerForSemanticSegmentation
-except ImportError:  # pragma: no cover - optional dependency at runtime
-    SegformerForSemanticSegmentation = None  # type: ignore[assignment]
+from attention_unet import SpatialSelfAttention
 
 
 class InputFusion(nn.Module):
@@ -52,145 +47,122 @@ class InputFusion(nn.Module):
         return self.fuse(fused)
 
 
+def _conv_norm_leaky(
+    in_channels: int,
+    out_channels: int,
+    *,
+    kernel_size: int = 3,
+    stride: int = 1,
+) -> nn.Sequential:
+    padding = kernel_size // 2
+    return nn.Sequential(
+        nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            bias=True,
+        ),
+        nn.InstanceNorm2d(out_channels, eps=1e-5, affine=True),
+        nn.LeakyReLU(inplace=True),
+    )
+
+
+class EncoderStage(nn.Module):
+    """Stacked convolutions with optional strided down-sampling."""
+
+    def __init__(self, in_channels: int, out_channels: int, stride: int) -> None:
+        super().__init__()
+        self.block = nn.Sequential(
+            _conv_norm_leaky(in_channels, out_channels, stride=stride),
+            _conv_norm_leaky(out_channels, out_channels, stride=1),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.block(x)
+
+
 class SegFormerBackbone(nn.Module):
-    """Wrapper around a SegFormer backbone with optional fallback."""
+    """Six-stage UNet encoder with a spatial self-attention bottleneck."""
 
     def __init__(self, cfg: Config) -> None:
         super().__init__()
         self.cfg = cfg
-        self.encoder: nn.Module | None = None
-        self.out_channels: List[int]
-        self.encoder_strides: List[int] = []
-        if cfg.use_transformers and SegformerForSemanticSegmentation is not None:
-            try:
-                self.encoder = SegformerForSemanticSegmentation.from_pretrained(cfg.backbone_name)
-                self.out_channels = list(self.encoder.config.hidden_sizes)
-                self.encoder_strides = list(getattr(self.encoder.config, "encoder_stride", []))
-                if len(self.encoder_strides) != len(self.out_channels):
-                    self.encoder_strides = [
-                        2 ** (i + 2) for i in range(len(self.out_channels))
-                    ]
-                print(
-                    f"[SegFormerBackbone] Using transformers pretrained model '{cfg.backbone_name}'."
-                )
-            except Exception as exc:
-                self.encoder = None
-                print(
-                    "[SegFormerBackbone] Failed to load transformers pretrained model "
-                    f"'{cfg.backbone_name}': {exc}. Falling back to custom encoder."
-                )
-        elif cfg.use_transformers and SegformerForSemanticSegmentation is None:
-            print(
-                "[SegFormerBackbone] transformers package not available; "
-                "falling back to custom encoder."
-            )
-        if self.encoder is None:
-            self.out_channels = list(cfg.feature_dims)
-            if cfg.use_transformers:
-                print("[SegFormerBackbone] Initialising custom fallback encoder.")
-            else:
-                print(
-                    "[SegFormerBackbone] Using custom encoder (pretrained backbone disabled in config)."
-                )
-            layers: List[nn.Module] = []
-            in_ch = 3
-            for out_ch in cfg.feature_dims:
-                block = nn.Sequential(
-                    nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=2, padding=1),
-                    nn.ReLU(inplace=True),
-                    nn.Conv2d(out_ch, out_ch, kernel_size=3, stride=1, padding=1),
-                    nn.ReLU(inplace=True),
-                )
-                layers.append(block)
-                in_ch = out_ch
-            self.fallback = nn.ModuleList(layers)
-        else:
-            self.fallback = nn.ModuleList()
-
-    def _reshape_hidden(
-        self,
-        hidden: torch.Tensor,
-        stride: int,
-        spatial: tuple[int, int],
-        expected_channels: int,
-    ) -> torch.Tensor:
-        if hidden.dim() == 4:
-            if hidden.shape[1] == expected_channels:
-                return hidden
-            if hidden.shape[-1] == expected_channels:
-                return hidden.permute(0, 3, 1, 2)
-            raise RuntimeError(
-                "SegFormer encoder returned unexpected feature shape: "
-                f"{hidden.shape} (expected channel dim {expected_channels})."
-            )
-        if hidden.dim() != 3:
-            raise ValueError("Unexpected hidden state shape from SegFormer encoder")
-        B, N, C = hidden.shape
-        H = max(1, math.ceil(spatial[0] / stride))
-        W = max(1, math.ceil(spatial[1] / stride))
-        if H * W != N:
-            # fallback assuming flattened tokens follow stride order
-            H = max(1, spatial[0] // stride)
-            W = max(1, spatial[1] // stride)
-        return hidden.transpose(1, 2).reshape(B, C, H, W)
+        self.out_channels: List[int] = [32, 64, 128, 256, 512, 512]
+        strides = [1, 2, 2, 2, 2, 2]
+        stages: List[nn.Module] = []
+        in_ch = 3
+        for out_ch, stride in zip(self.out_channels, strides):
+            stages.append(EncoderStage(in_ch, out_ch, stride))
+            in_ch = out_ch
+        self.encoder = nn.ModuleList(stages)
+        bottleneck_channels = self.out_channels[-1]
+        self.attention = SpatialSelfAttention(
+            bottleneck_channels,
+            num_heads=4,
+            max_tokens=4096,
+        )
+        self.attention_fuse = nn.Sequential(
+            _conv_norm_leaky(bottleneck_channels * 2, bottleneck_channels),
+            _conv_norm_leaky(bottleneck_channels, bottleneck_channels),
+        )
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
-        if self.encoder is not None:
-            outputs = self.encoder(
-                x,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-            hidden_states = getattr(outputs, "hidden_states", None)
-            if hidden_states is None:
-                hidden_states = getattr(outputs, "encoder_hidden_states", None)
-            if hidden_states is None:
-                raise RuntimeError("SegFormer encoder did not return hidden states.")
-            stages = hidden_states[-len(self.out_channels) :]
-            feats: List[torch.Tensor] = []
-            spatial = (x.shape[-2], x.shape[-1])
-            for idx, hidden in enumerate(stages):
-                stride = self.encoder_strides[idx] if idx < len(self.encoder_strides) else 2 ** (idx + 2)
-                feat = self._reshape_hidden(
-                    hidden,
-                    stride,
-                    spatial,
-                    self.out_channels[idx],
-                )
-                if feat.shape[1] != self.out_channels[idx]:
-                    raise RuntimeError(
-                        "SegFormer feature channels mismatch: "
-                        f"expected {self.out_channels[idx]}, got {feat.shape[1]}"
-                    )
-                feats.append(feat)
-            return feats
-        feats: List[torch.Tensor] = []
+        features: List[torch.Tensor] = []
         cur = x
-        for block in self.fallback:
-            cur = block(cur)
-            feats.append(cur)
-        return feats
+        for stage in self.encoder:
+            cur = stage(cur)
+            features.append(cur)
+        bottleneck = features[-1]
+        attended = self.attention(bottleneck)
+        fused = torch.cat([bottleneck, attended], dim=1)
+        features[-1] = self.attention_fuse(fused)
+        return features
 
 
 class PixelDecoder(nn.Module):
-    """Top-down fusion decoder that produces per-pixel embeddings."""
+    """UNet-style decoder that produces spatial embeddings."""
 
     def __init__(self, in_channels_list: List[int], embed_dim: int) -> None:
         super().__init__()
-        self.proj = nn.ModuleList([nn.Conv2d(c, embed_dim, kernel_size=1) for c in in_channels_list])
-        self.fuse = nn.Conv2d(embed_dim, embed_dim, kernel_size=3, padding=1)
+        if not in_channels_list:
+            raise ValueError("PixelDecoder requires at least one feature map")
+        self.embed_dim = embed_dim
+        projections: List[nn.Module] = []
+        for ch in in_channels_list:
+            if ch == embed_dim:
+                projections.append(nn.Identity())
+            else:
+                projections.append(nn.Conv2d(ch, embed_dim, kernel_size=1, bias=True))
+        self.projections = nn.ModuleList(projections)
+        self.bottleneck = nn.Sequential(
+            _conv_norm_leaky(embed_dim, embed_dim),
+            _conv_norm_leaky(embed_dim, embed_dim),
+        )
+        self.decode_blocks = nn.ModuleList()
+        for _ in range(len(in_channels_list) - 1):
+            block = nn.Sequential(
+                _conv_norm_leaky(embed_dim * 2, embed_dim),
+                _conv_norm_leaky(embed_dim, embed_dim),
+            )
+            self.decode_blocks.append(block)
+        self.out = nn.Sequential(
+            _conv_norm_leaky(embed_dim, embed_dim),
+        )
 
     def forward(self, feats: List[torch.Tensor]) -> torch.Tensor:
-        x: torch.Tensor | None = None
-        for idx, feat in enumerate(reversed(feats)):
-            proj = self.proj[len(feats) - 1 - idx](feat)
-            if x is None:
-                x = proj
-            else:
-                x = F.interpolate(x, size=proj.shape[-2:], mode="bilinear", align_corners=False) + proj
-        assert x is not None
-        x = self.fuse(x)
-        return x
+        if len(feats) != len(self.projections):
+            raise ValueError("Mismatch between features and decoder projections")
+        processed = [proj(feat) for proj, feat in zip(self.projections, feats)]
+        x = self.bottleneck(processed[-1])
+        for idx in range(len(processed) - 2, -1, -1):
+            skip = processed[idx]
+            x = F.interpolate(x, size=skip.shape[-2:], mode="bilinear", align_corners=False)
+            x = torch.cat([x, skip], dim=1)
+            block_index = len(processed) - 2 - idx
+            x = self.decode_blocks[block_index](x)
+        return self.out(x)
 
 
 class SimplePositionalEncoding(nn.Module):
