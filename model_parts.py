@@ -88,7 +88,8 @@ class SegFormerBackbone(nn.Module):
     def __init__(self, cfg: Config) -> None:
         super().__init__()
         self.cfg = cfg
-        self.features_per_stage: List[int] = [32, 64, 128, 256, 512, 512]
+        # Lighter channel configuration to reduce peak feature map memory
+        self.features_per_stage: List[int] = [24, 48, 96, 192, 256, 256]
         self.stage_strides: List[int] = [1, 2, 2, 2, 2, 2]
         self.encoder_stages = nn.ModuleList()
 
@@ -109,24 +110,25 @@ class SegFormerBackbone(nn.Module):
             stride=1,
         )
 
+        # Only decode up to 1/4 resolution to keep downstream tensors compact
         decoder_specs = [
             (self.features_per_stage[-1], self.features_per_stage[-2], self.features_per_stage[-2]),
             (self.features_per_stage[-2], self.features_per_stage[-3], self.features_per_stage[-3]),
             (self.features_per_stage[-3], self.features_per_stage[-4], self.features_per_stage[-4]),
-            (self.features_per_stage[-4], self.features_per_stage[-5], self.features_per_stage[-5]),
-            (self.features_per_stage[-5], self.features_per_stage[-6], self.features_per_stage[-6]),
         ]
         self.decoder_stages = nn.ModuleList(
             [UpBlock(in_ch, skip_ch, out_ch) for in_ch, skip_ch, out_ch in decoder_specs]
         )
 
         self.final_conv = nn.Sequential(
-            nn.Conv2d(self.features_per_stage[0], cfg.embed_dim, kernel_size=3, padding=1, bias=True),
+            nn.Conv2d(self.features_per_stage[2], cfg.embed_dim, kernel_size=3, padding=1, bias=True),
             nn.InstanceNorm2d(cfg.embed_dim, eps=1e-5, affine=True),
             nn.LeakyReLU(inplace=True),
             nn.Conv2d(cfg.embed_dim, cfg.embed_dim, kernel_size=1, bias=True),
         )
-        self.out_channels: List[int] = [cfg.embed_dim]
+        # Decoder exposes multi-scale features ordered from high to low resolution
+        decoder_out_channels = [spec[-1] for spec in decoder_specs][::-1]
+        self.out_channels: List[int] = [cfg.embed_dim] + decoder_out_channels[1:]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features: List[torch.Tensor] = []
@@ -140,12 +142,15 @@ class SegFormerBackbone(nn.Module):
         fused = torch.cat([bottleneck, attended], dim=1)
         cur = self.attention_fuse(fused)
 
+        decoder_feats: List[torch.Tensor] = []
         skips = features[:-1][::-1]
         for stage, skip in zip(self.decoder_stages, skips):
             cur = stage(cur, skip)
+            decoder_feats.append(cur)
 
-        final_feature = self.final_conv(cur)
-        return [final_feature]
+        high_to_low = decoder_feats[::-1]
+        final_feature = self.final_conv(high_to_low[0])
+        return [final_feature] + high_to_low[1:]
 
 
 class PixelDecoder(nn.Module):
