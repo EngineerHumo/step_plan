@@ -12,9 +12,10 @@ import torch.nn.functional as F
 from config import Config
 
 try:
-    from transformers import SegformerModel
+    #from transformers import SegformerModel
+    from transformers import SegformerForSemanticSegmentation
 except ImportError:  # pragma: no cover - optional dependency at runtime
-    SegformerModel = None  # type: ignore[assignment]
+    SegformerForSemanticSegmentation = None  # type: ignore[assignment]
 
 
 class InputFusion(nn.Module):
@@ -60,9 +61,9 @@ class SegFormerBackbone(nn.Module):
         self.encoder: nn.Module | None = None
         self.out_channels: List[int]
         self.encoder_strides: List[int] = []
-        if cfg.use_transformers and SegformerModel is not None:
+        if cfg.use_transformers and SegformerForSemanticSegmentation is not None:
             try:
-                self.encoder = SegformerModel.from_pretrained(cfg.backbone_name)
+                self.encoder = SegformerForSemanticSegmentation.from_pretrained(cfg.backbone_name)
                 self.out_channels = list(self.encoder.config.hidden_sizes)
                 self.encoder_strides = list(getattr(self.encoder.config, "encoder_stride", []))
                 if len(self.encoder_strides) != len(self.out_channels):
@@ -78,7 +79,7 @@ class SegFormerBackbone(nn.Module):
                     "[SegFormerBackbone] Failed to load transformers pretrained model "
                     f"'{cfg.backbone_name}': {exc}. Falling back to custom encoder."
                 )
-        elif cfg.use_transformers and SegformerModel is None:
+        elif cfg.use_transformers and SegformerForSemanticSegmentation is None:
             print(
                 "[SegFormerBackbone] transformers package not available; "
                 "falling back to custom encoder."
